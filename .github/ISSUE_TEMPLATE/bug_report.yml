@@ -1,0 +1,73 @@
+name: Bug report
+description: Something is broken or not behaving as expected
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more detail you can
+        give, the faster we can reproduce and fix it.
+
+  - type: input
+    id: figma-version
+    attributes:
+      label: Figma version
+      description: Help → About Figma in the desktop app.
+      placeholder: e.g. 124.6.5
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. macOS 14.5, Windows 11
+    validations:
+      required: true
+
+  - type: dropdown
+    id: editor
+    attributes:
+      label: Where did this happen?
+      options:
+        - Figma desktop app
+        - Figma web (figma.com)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I clicked X, Y happened — I expected Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps so we can hit the same bug.
+      placeholder: |
+        1. Open the plugin
+        2. Click X
+        3. See Y
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Plugin console output (if any)
+      description: |
+        Plugins → Development → **Open Console** in Figma. Paste any red
+        errors here. Often this is enough to diagnose the issue immediately.
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / GIFs (optional)
+      description: Drag and drop images here.

@@ -1,5 +1,8 @@
 # Open Source - Map Generator
 
+[![build](https://github.com/Delta365/open-source-map-generator/actions/workflows/build.yml/badge.svg)](https://github.com/Delta365/open-source-map-generator/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A Figma plugin to export high-resolution map sections from open-source basemaps
 into editable Figma frames. Drop pins, draw routes (driving directions or
 bezier arcs), and get back a layered Figma frame with the map, pins, and
