@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open Source - Map Generator</title>
+
+    <!-- MapLibre GL CSS is bundled at build time and injected here. -->
+    <!--STYLES-->
+
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: var(--figma-color-bg, #ffffff);
+        --bg-secondary: var(--figma-color-bg-secondary, #f5f5f5);
+        --bg-tertiary: var(--figma-color-bg-tertiary, #ebebeb);
+        --bg-hover: var(--figma-color-bg-hover, #f0f0f0);
+        --text: var(--figma-color-text, #1e1e1e);
+        --text-secondary: var(--figma-color-text-secondary, #777777);
+        --border: var(--figma-color-border, #e6e6e6);
+        --border-strong: var(--figma-color-border-strong, #cfcfcf);
+        --brand: var(--figma-color-bg-brand, #0d99ff);
+        --brand-hover: var(--figma-color-bg-brand-hover, #007be5);
+        --on-brand: var(--figma-color-text-onbrand, #ffffff);
+        --danger: var(--figma-color-text-danger, #f24822);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: var(--bg); color: var(--text);
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 11px; line-height: 1.4; overflow: hidden;
+      }
+
+      body { display: flex; flex-direction: column; }
+
+      /* --- Reusable controls ----------------------------------------- */
+
+      input[type="text"], input[type="search"], input[type="number"], select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--bg-secondary);
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: var(--text);
+        font: inherit;
+        padding: 5px 8px;
+        outline: none;
+        transition: border-color 120ms ease, background 120ms ease;
+        min-width: 0;
+      }
+      input::placeholder { color: var(--text-secondary); }
+      input:focus, select:focus {
+        background: var(--bg);
+        border-color: var(--brand);
+      }
+      input[type="number"] { width: 60px; text-align: right; }
+      /* Hide the browser's default spinner arrows — we provide our own
+         stepper buttons for bearing / pitch / zoom. */
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] { -moz-appearance: textfield; }
+      select {
+        padding-right: 22px;
+        background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                          linear-gradient(135deg, currentColor 50%, transparent 50%);
+        background-position: calc(100% - 12px) 52%, calc(100% - 8px) 52%;
+        background-size: 4px 4px, 4px 4px;
+        background-repeat: no-repeat;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        font: inherit; font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .btn:hover:not(:disabled) { background: var(--bg-hover); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn.active {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: var(--on-brand);
+      }
+
+      .btn-primary {
+        appearance: none;
+        border: 0;
+        background: var(--brand);
+        color: var(--on-brand);
+        font: inherit; font-weight: 600;
+        padding: 7px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 120ms ease;
+        min-width: 100px;
+      }
+      .btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
+      .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+      label.field {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+      label.field input { color: var(--text); font-weight: 400; }
+
+      /* --- Layout chrome --------------------------------------------- */
+
+      .header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 10px 12px;
+        border-bottom: 1px solid var(--border); flex-shrink: 0;
+      }
+      .title { font-weight: 600; font-size: 12px; letter-spacing: 0.01em; }
+      .header select { min-width: 180px; }
+
+      .search-row {
+        display: flex; gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border); flex-shrink: 0;
+        position: relative;
+      }
+      .search-row .search-input { flex: 1; }
+      .recent-pop {
+        position: absolute; top: calc(100% - 1px); left: 12px; right: 56px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-top-color: transparent;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        z-index: 20;
+        display: none;
+        max-height: 180px;
+        overflow-y: auto;
+      }
+      .recent-pop.open { display: block; }
+      .recent-item {
+        padding: 6px 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .recent-item:hover,
+      .recent-item.highlighted {
+        background: var(--bg-hover);
+      }
+      .recent-item .leading {
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        width: 12px;
+        text-align: center;
+      }
+      .recent-item .suggest-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0;
+      }
+      .dropdown-header {
+        padding: 6px 10px 4px;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+      .recent-clear {
+        padding: 6px 10px;
+        border-top: 1px solid var(--border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        text-align: center;
+      }
+      .recent-clear:hover { background: var(--bg-hover); }
+
+      /* Map fills the whole .main; side panel overlays on top of it.
+         No layout reflow when the panel toggles — the map stays put. */
+      .main {
+        flex: 1 1 auto; min-height: 0;
+        position: relative;
+        display: flex;
+      }
+
+      .map-wrap {
+        position: relative; flex: 1 1 auto;
+        min-width: 0; min-height: 0;
+        background: var(--bg-secondary);
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+      }
+
+      /* --- Side panel — overlay on the right edge ----------------- */
+
+      .side-panel {
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 280px;
+        background: var(--bg);
+        border-left: 1px solid var(--border);
+        display: flex; flex-direction: column;
+        z-index: 20;          /* above all map overlays */
+        box-shadow: -6px 0 16px rgba(0, 0, 0, 0.08);
+        transform: translateX(0);
+        transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+        will-change: transform;
+        overflow: hidden;
+      }
+      .side-panel.collapsed {
+        transform: translateX(100%);
+        box-shadow: none;
+      }
+
+      /* Active state for the panel-toggle icon button when the panel is open. */
+      .header-icon.active {
+        background: var(--bg-tertiary);
+        color: var(--text);
+      }
+
+      .panel-tabs {
+        display: flex;
+        gap: 0;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        height: 34px;
+      }
+      .panel-tab {
+        appearance: none; border: 0; background: transparent;
+        color: var(--text-secondary);
+        font: inherit; font-weight: 500;
+        padding: 0 10px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .panel-tab:hover { color: var(--text); }
+      .panel-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--brand);
+      }
+
+      .panel-content {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 12px;
+      }
+      .tab-pane { display: none; }
+      .tab-pane.active { display: block; }
+
+      .panel-placeholder {
+        color: var(--text-secondary);
+        font-size: 11px;
+        line-height: 1.55;
+        margin: 0;
+      }
+      .panel-placeholder strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* When collapsed, hide the tabs and content; toggle stays visible. */
+      .side-panel.collapsed .panel-tabs,
+      .side-panel.collapsed .panel-content {
+        visibility: hidden;
+      }
+      .map-frame { position: relative; background: var(--bg); }
+      #map { position: absolute; inset: 0; }
+
+      /* Map overlays */
+      .map-tl {
+        position: absolute; left: 8px; top: 8px;
+        display: flex; gap: 6px; z-index: 10;
+      }
+      .map-pill {
+        appearance: none; border: 0;
+        background: rgba(255,255,255,0.92); color: #1e1e1e;
+        font: inherit; font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 16px;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+        backdrop-filter: blur(6px);
+      }
+      .map-pill:hover { background: #ffffff; }
+      .map-pill.active {
+        background: var(--brand); color: var(--on-brand);
+      }
+
+      .crosshair { position: absolute; inset: 0; pointer-events: none; }
+      .crosshair::before, .crosshair::after {
+        content: ""; position: absolute;
+        background: rgba(255, 255, 255, 0.6);
+        mix-blend-mode: difference;
+      }
+      .crosshair::before {
+        left: 50%; top: 50%; width: 14px; height: 1px;
+        transform: translate(-50%, -50%);
+      }
+      .crosshair::after {
+        left: 50%; top: 50%; width: 1px; height: 14px;
+        transform: translate(-50%, -50%);
+      }
+
+      .ratio-badge {
+        position: absolute; right: 8px; bottom: 8px;
+        padding: 4px 8px;
+        font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+        background: rgba(0,0,0,0.6); color: #fff;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .status-chip {
+        position: absolute; left: 8px; bottom: 36px;
+        /* sits above the MapLibre attribution chip in the bottom-left */
+        padding: 5px 10px;
+        font-size: 11px;
+        background: rgba(0,0,0,0.7); color: #fff;
+        border-radius: 4px;
+        max-width: 60%;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        z-index: 10;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 200ms;
+      }
+      .status-chip.show { opacity: 1; }
+      .status-chip.error { background: var(--danger); }
+
+      /* Pin-drop cursor when mode is on */
+      .pin-mode #map { cursor: crosshair; }
+
+      /* View row (bearing / pitch / zoom) — extra gap so the three steppers
+         feel like distinct controls instead of one undifferentiated strip. */
+      .view-row {
+        display: flex; align-items: center; gap: 20px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--border); flex-shrink: 0;
+      }
+      .view-row .spacer { flex: 1; }
+
+      /* --- Number stepper (− input +) --------------------------- */
+
+      .stepper {
+        display: inline-flex; align-items: stretch;
+        background: var(--bg-secondary);
+        border: 1px solid transparent;   /* match the W/H number inputs */
+        border-radius: 6px;
+        overflow: hidden;
+        transition: background 120ms ease, border-color 120ms ease;
+      }
+      .stepper:focus-within {
+        background: var(--bg);
+        border-color: var(--brand);
+      }
+      .stepper input[type="number"] {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 4px 4px;
+        text-align: center;
+        width: 44px;
+      }
+      .stepper input[type="number"]:focus {
+        background: transparent;          /* parent stepper handles focus look */
+        border: 0;
+      }
+      .stepper-btn {
+        appearance: none; border: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        width: 22px;
+        font: inherit; font-size: 14px; line-height: 1;
+        padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        user-select: none;
+      }
+      .stepper-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text);
+      }
+      .stepper-btn:active {
+        background: var(--bg-tertiary);
+      }
+
+      /* --- Pins (panel content) ----------------------------------- */
+
+      .pin-actions {
+        display: flex; align-items: center; gap: 6px;
+        margin-bottom: 12px;
+      }
+      .pin-meta-count {
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .pin-list {
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      .pin-list:empty + .pin-empty { display: block; }
+
+      .pin-empty {
+        display: none;
+        margin: 4px 0 0;
+        color: var(--text-secondary);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .pin-empty strong { color: var(--text); font-weight: 600; }
+
+      .pin-item {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 4px 6px 8px;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        min-width: 0;
+      }
+      .pin-item:hover { background: var(--bg-hover); }
+      .pin-item .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .pin-item .pin-meta {
+        flex: 1; min-width: 0;
+        display: flex; flex-direction: column;
+        gap: 1px;
+      }
+      .pin-item .name {
+        outline: none;
+        font-weight: 500;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        cursor: text;
+      }
+      .pin-item .name:focus {
+        background: var(--bg);
+        border-radius: 2px;
+        margin: 0 -2px;
+        padding: 0 2px;
+      }
+      .pin-item .coords {
+        color: var(--text-secondary);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .pin-item .remove {
+        appearance: none; border: 0; background: transparent;
+        cursor: pointer; color: var(--text-secondary);
+        width: 22px; height: 22px;
+        font-size: 14px; line-height: 1;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+      .pin-item .remove:hover {
+        background: var(--bg-tertiary); color: var(--text);
+      }
+
+      /* --- Routes (panel content) --------------------------------- */
+
+      .route-form {
+        display: flex; flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .route-input-row {
+        display: flex; flex-direction: column;
+        gap: 4px;
+      }
+      .route-label {
+        font-size: 9px; font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .autocomplete-wrap { position: relative; }
+      .autocomplete-pop {
+        top: calc(100% + 2px);
+        left: 0; right: 0;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+      }
+      .route-input { width: 100%; }
+
+      .route-type {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 4px;
+      }
+      .seg-control {
+        display: inline-flex;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .seg-btn {
+        appearance: none; border: 0; background: transparent;
+        color: var(--text);
+        font: inherit; font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .seg-btn:hover { background: var(--bg-hover); }
+      .seg-btn.active {
+        background: var(--bg);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      .route-actions {
+        display: flex; align-items: center; gap: 6px;
+        margin-top: 4px;
+      }
+      .route-count {
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .route-list {
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      .route-list:empty + #route-empty { display: block; }
+
+      .route-item {
+        display: flex; align-items: stretch; gap: 8px;
+        padding: 6px 4px 6px 8px;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        min-width: 0;
+      }
+      .route-item:hover { background: var(--bg-hover); }
+      .route-item .stripe {
+        width: 3px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .route-item .meta {
+        flex: 1; min-width: 0;
+        display: flex; flex-direction: column;
+        gap: 1px;
+        align-self: center;
+      }
+      .route-item .label {
+        font-weight: 500;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .route-item .sub {
+        color: var(--text-secondary);
+        font-size: 10px;
+      }
+      .route-item .remove {
+        appearance: none; border: 0; background: transparent;
+        cursor: pointer; color: var(--text-secondary);
+        width: 22px; height: 22px;
+        font-size: 14px; line-height: 1;
+        border-radius: 4px;
+        flex-shrink: 0;
+        align-self: center;
+      }
+      .route-item .remove:hover {
+        background: var(--bg-tertiary); color: var(--text);
+      }
+
+      /* --- API key panel (Routes tab top) ----------------------- */
+
+      .api-key-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px 10px;
+        margin-bottom: 4px;
+      }
+      .api-key-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .api-key-input-wrap {
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      /* `display: flex` above out-specifies the UA's [hidden] rule, so we
+         have to re-assert it ourselves. Same applies to .api-key-saved-msg. */
+      .api-key-input-wrap[hidden],
+      .api-key-saved-msg[hidden] { display: none; }
+      /* Input + Save button on one row. */
+      .api-key-input-row {
+        display: flex; gap: 6px;
+      }
+      .api-key-input-row input { flex: 1; min-width: 0; }
+      /* The container is bg-secondary, so the default input background blends
+         in. Lift the input to the lighter bg + a visible border so users can
+         clearly see it's a field they can type into. */
+      .api-key-input-wrap input {
+        background: var(--bg);
+        border: 1px solid var(--border-strong);
+      }
+      .api-key-help {
+        margin: 2px 0 0;
+        font-size: 10px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+      .api-key-help a {
+        color: var(--brand);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .api-key-help a:hover { text-decoration: underline; }
+      .api-key-help ol {
+        margin: 4px 0 0;
+        padding-left: 16px;
+      }
+      .api-key-help ol li { margin-bottom: 2px; }
+
+      .api-key-saved-msg {
+        font-size: 11px; color: var(--text);
+        font-weight: 500;
+        display: flex; align-items: center; gap: 8px;
+        flex-wrap: wrap;
+      }
+      .api-key-saved-msg code {
+        font-family: ui-monospace, "SF Mono", "Monaco", "Consolas", monospace;
+        font-size: 10px;
+        background: var(--bg-secondary);
+        padding: 1px 5px;
+        border-radius: 3px;
+        color: var(--text-secondary);
+        font-weight: 400;
+      }
+      .api-key-saved-msg .link-btn {
+        margin-left: auto;     /* push Change to the right edge */
+      }
+      .link-btn {
+        appearance: none; border: 0; background: transparent;
+        color: var(--brand);
+        font: inherit; font-weight: 500;
+        padding: 0;
+        cursor: pointer;
+      }
+      .link-btn:hover { text-decoration: underline; }
+
+      /* Once the key is saved we strip the card chrome and show only the
+         single-line confirmation row, so the user can focus on From / To. */
+      .api-key-section.minimized {
+        background: transparent;
+        border: 0;
+        padding: 4px 2px 8px;
+        margin-bottom: 4px;
+      }
+      .api-key-section.minimized .api-key-header { display: none; }
+
+      /* Footer */
+      .footer {
+        display: flex; align-items: center; gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--border); flex-shrink: 0;
+      }
+      .footer .size-group, .footer .export-group {
+        display: flex; align-items: center; gap: 6px;
+      }
+      .footer .spacer { flex: 1; }
+      .footer .quality-row {
+        display: none;
+        align-items: center; gap: 6px;
+      }
+      .footer .quality-row.show { display: flex; }
+      .footer #size-preset { min-width: 120px; }
+      .footer #format, .footer #pixel-ratio { min-width: 56px; }
+
+      .spinner {
+        display: inline-block;
+        width: 11px; height: 11px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* MapLibre attribution — forced to black-on-white for legibility on
+         any basemap (light, dark, satellite, terrain) and any Figma theme. */
+      .maplibregl-ctrl-attrib,
+      .maplibregl-ctrl-attrib.maplibregl-compact {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: 10px !important;
+      }
+      .maplibregl-ctrl-attrib a,
+      .maplibregl-ctrl-attrib a:visited,
+      .maplibregl-ctrl-attrib a:hover {
+        color: #000000 !important;
+        text-decoration: underline;
+      }
+      .maplibregl-ctrl-attrib-inner { color: #000000 !important; }
+      .maplibregl-ctrl-attrib-button {
+        background-color: #ffffff !important;
+      }
+
+      /* --- About modal --------------------------------------------- */
+
+      .header-icon {
+        appearance: none; border: 0; background: transparent;
+        color: var(--text-secondary);
+        width: 24px; height: 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .header-icon:hover { background: var(--bg-hover); color: var(--text); }
+      .header-left {
+        display: flex; align-items: center; gap: 6px;
+        min-width: 0;
+      }
+
+      .modal-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 100;
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .modal-backdrop[hidden] { display: none; }
+
+      .modal {
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 8px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 460px;
+        max-height: 100%;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+      .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .modal-header h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .modal-close {
+        appearance: none; border: 0; background: transparent;
+        width: 24px; height: 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        color: var(--text-secondary);
+      }
+      .modal-close:hover { background: var(--bg-hover); color: var(--text); }
+      .modal-body {
+        padding: 14px 16px 16px;
+        overflow-y: auto;
+        font-size: 11px;
+      }
+      .modal-body p {
+        margin: 0 0 10px;
+      }
+      .modal-body p.lead { color: var(--text); }
+      .modal-body p.foot {
+        margin-top: 10px;
+        color: var(--text-secondary);
+        font-size: 10px;
+      }
+      .credits {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .credits li {
+        padding: 8px 0;
+        border-top: 1px solid var(--border);
+      }
+      .credits li:first-child { border-top: 0; padding-top: 4px; }
+      .credits .name {
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      .credits .name a {
+        color: var(--brand);
+        text-decoration: none;
+      }
+      .credits .name a:hover { text-decoration: underline; }
+      .credits .meta {
+        color: var(--text-secondary);
+        font-size: 10px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="header">
+      <div class="header-left">
+        <div class="title">Open Source - Map Generator</div>
+        <button id="about-btn" class="header-icon" type="button" title="About &amp; credits" aria-label="About">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+      </div>
+      <label class="field">
+        Style
+        <select id="style-select" aria-label="Map style"></select>
+      </label>
+    </header>
+
+    <div class="search-row">
+      <input
+        id="search"
+        class="search-input"
+        type="search"
+        placeholder="Search a place or paste lat,lng (e.g. 35.68,139.69)"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="search-btn" class="btn" type="button">Search</button>
+      <button id="panel-toggle" class="header-icon" type="button"
+              title="Show side panel" aria-label="Toggle side panel"
+              aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
+      </button>
+      <div id="recent-pop" class="recent-pop" role="listbox"></div>
+    </div>
+
+    <div class="main">
+      <div class="map-wrap">
+        <div class="map-frame" id="map-frame">
+          <div id="map" aria-label="Map preview"></div>
+
+          <div class="map-tl">
+            <button id="reset-view" class="map-pill" type="button" title="Reset bearing &amp; pitch">
+              <span aria-hidden="true">↺</span> Reset
+            </button>
+          </div>
+
+          <div class="crosshair" aria-hidden="true"></div>
+          <div class="ratio-badge" id="ratio-badge">1920 × 1080</div>
+          <div class="status-chip" id="status">Pan and zoom to frame your section.</div>
+        </div>
+      </div>
+
+      <aside class="side-panel collapsed" id="side-panel" aria-label="Side panel">
+        <div class="panel-tabs" role="tablist">
+          <button class="panel-tab active" type="button" role="tab"
+                  data-tab="pins" aria-selected="true">Pins</button>
+          <button class="panel-tab" type="button" role="tab"
+                  data-tab="routes" aria-selected="false">Routes</button>
+        </div>
+        <div class="panel-content">
+          <div class="tab-pane active" data-pane="pins" role="tabpanel">
+            <div class="pin-actions">
+              <button id="add-pin" class="btn" type="button">+ Drop pin</button>
+              <button id="clear-pins" class="btn" type="button" disabled>Clear</button>
+              <span class="pin-meta-count" id="pin-count">No pins</span>
+            </div>
+            <div id="pin-chips" class="pin-list"></div>
+            <p id="pin-empty" class="pin-empty">
+              No pins yet. Click <strong>+ Drop pin</strong> above and tap a
+              location on the map. You can also use the
+              <strong>Drop pin</strong> button on the map itself.
+            </p>
+          </div>
+          <div class="tab-pane" data-pane="routes" role="tabpanel">
+            <div class="route-form">
+              <div class="api-key-section" id="api-key-section">
+                <div class="api-key-header" id="api-key-header">
+                  <span class="route-label">Routing API key</span>
+                </div>
+                <div id="api-key-input-wrap" class="api-key-input-wrap">
+                  <div class="api-key-input-row">
+                    <input id="api-key-input" type="text"
+                           autocomplete="off" spellcheck="false"
+                           placeholder="Paste your OpenRouteService API key" />
+                    <button id="api-key-save" class="btn" type="button" disabled>
+                      Save
+                    </button>
+                  </div>
+                  <p class="api-key-help">
+                    Required for <strong>Roads</strong> routing. Free at
+                    <a href="https://openrouteservice.org/dev/#/signup"
+                       target="_blank" rel="noopener noreferrer">openrouteservice.org</a>
+                    — no credit card, 2,000 routes/day.
+                    <ol>
+                      <li>Sign up (free) and log in.</li>
+                      <li>Open <em>Dashboard → Tokens</em> and create a token under the <em>Standard</em> plan.</li>
+                      <li>Copy the token and paste it into the field above.</li>
+                    </ol>
+                    Your key is saved on this device only — never sent to anyone except OpenRouteService.
+                  </p>
+                </div>
+                <div id="api-key-saved-msg" class="api-key-saved-msg" hidden>
+                  <span class="api-key-check">✓ Routing key saved</span>
+                  <code id="api-key-mask"></code>
+                  <button id="api-key-change" class="link-btn" type="button">
+                    Change
+                  </button>
+                </div>
+              </div>
+
+              <div class="route-input-row">
+                <label class="route-label" for="route-from">From</label>
+                <div class="autocomplete-wrap">
+                  <input id="route-from" class="route-input" type="search"
+                         placeholder="Start location" autocomplete="off"
+                         spellcheck="false" />
+                  <div id="route-from-pop" class="recent-pop autocomplete-pop"
+                       role="listbox"></div>
+                </div>
+              </div>
+              <div class="route-input-row">
+                <label class="route-label" for="route-to">To</label>
+                <div class="autocomplete-wrap">
+                  <input id="route-to" class="route-input" type="search"
+                         placeholder="End location" autocomplete="off"
+                         spellcheck="false" />
+                  <div id="route-to-pop" class="recent-pop autocomplete-pop"
+                       role="listbox"></div>
+                </div>
+              </div>
+
+              <div class="route-type">
+                <span class="route-label">Type</span>
+                <div class="seg-control" role="tablist">
+                  <button class="seg-btn active" data-route-type="roads"
+                          type="button" role="tab" aria-selected="true">Roads</button>
+                  <button class="seg-btn" data-route-type="arc"
+                          type="button" role="tab" aria-selected="false">Arc</button>
+                </div>
+              </div>
+
+              <div class="route-actions">
+                <button id="add-route" class="btn" type="button" disabled>
+                  + Add route
+                </button>
+                <button id="clear-routes" class="btn" type="button" disabled>
+                  Clear
+                </button>
+                <span class="route-count" id="route-count">No routes</span>
+              </div>
+            </div>
+
+            <div id="route-list" class="route-list"></div>
+            <p id="route-empty" class="pin-empty">
+              No routes yet. Pick a <strong>From</strong> and <strong>To</strong>
+              from the suggestions, then click <strong>+ Add route</strong>.
+              Use <strong>Roads</strong> for real driving directions or
+              <strong>Arc</strong> for a curved connection line.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="view-row">
+      <label class="field">
+        Bearing
+        <div class="stepper">
+          <button class="stepper-btn" type="button" data-target="bearing" data-step="-1" aria-label="Decrease bearing">−</button>
+          <input id="bearing" type="number" min="-180" max="180" step="1" value="0" />
+          <button class="stepper-btn" type="button" data-target="bearing" data-step="1" aria-label="Increase bearing">+</button>
+        </div>
+        °
+      </label>
+      <label class="field">
+        Pitch
+        <div class="stepper">
+          <button class="stepper-btn" type="button" data-target="pitch" data-step="-1" aria-label="Decrease pitch">−</button>
+          <input id="pitch" type="number" min="0" max="60" step="1" value="0" />
+          <button class="stepper-btn" type="button" data-target="pitch" data-step="1" aria-label="Increase pitch">+</button>
+        </div>
+        °
+      </label>
+      <label class="field">
+        Zoom
+        <div class="stepper">
+          <button class="stepper-btn" type="button" data-target="zoom" data-step="-1" aria-label="Zoom out">−</button>
+          <input id="zoom" type="number" min="0" max="22" step="0.1" value="1.4" />
+          <button class="stepper-btn" type="button" data-target="zoom" data-step="1" aria-label="Zoom in">+</button>
+        </div>
+      </label>
+      <div class="spacer"></div>
+      <button id="reset-bearing" class="btn" type="button">Level</button>
+    </div>
+
+    <footer class="footer">
+      <div class="size-group">
+        <select id="size-preset" aria-label="Frame size preset"></select>
+        <input id="size-w" type="number" min="64" max="8192" step="1" value="1920" aria-label="Frame width" />
+        <span style="color: var(--text-secondary)">×</span>
+        <input id="size-h" type="number" min="64" max="8192" step="1" value="1080" aria-label="Frame height" />
+      </div>
+      <div class="spacer"></div>
+      <div class="export-group">
+        <select id="format" aria-label="Image format">
+          <option value="png" selected>PNG</option>
+          <option value="jpeg">JPEG</option>
+        </select>
+        <select id="pixel-ratio" aria-label="Pixel ratio">
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="3">3×</option>
+        </select>
+        <button id="export" class="btn-primary" type="button">Export</button>
+      </div>
+    </footer>
+
+    <div class="quality-row" style="display:none;">
+      <!-- Reserved for future JPEG quality control -->
+    </div>
+
+    <div id="about-modal" class="modal-backdrop" role="dialog"
+         aria-modal="true" aria-labelledby="about-title" hidden>
+      <div class="modal">
+        <header class="modal-header">
+          <h2 id="about-title">About &amp; resources</h2>
+          <button id="about-close" class="modal-close" type="button" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="lead">
+            Open Source - Map Generator stands on the shoulders of these projects.
+            Click any name for the source.
+          </p>
+          <ul class="credits">
+            <li>
+              <div class="name">
+                <a href="https://maplibre.org" target="_blank" rel="noopener noreferrer">MapLibre GL JS</a>
+              </div>
+              <div class="meta">
+                The mapping engine that renders every preview and export.
+                BSD-3-Clause license.
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://carto.com/basemaps/" target="_blank" rel="noopener noreferrer">CARTO basemaps</a>
+              </div>
+              <div class="meta">
+                Voyager / Light / Dark vector basemaps used by the default
+                styles. Map tiles by CARTO, under CC&nbsp;BY&nbsp;3.0.
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+              </div>
+              <div class="meta">
+                Underlying map data for every basemap. © OpenStreetMap
+                contributors, distributed under the Open Database License (ODbL).
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"
+                   target="_blank" rel="noopener noreferrer">Esri World Imagery</a>
+              </div>
+              <div class="meta">
+                Tiles for the Satellite style. Imagery © Esri, Maxar, Earthstar
+                Geographics, USDA FSA, USGS, Aerogrid, IGN, IGP, UPR-EGP, and
+                the GIS User Community.
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a>
+              </div>
+              <div class="meta">
+                Tiles for the Terrain style. Map style © OpenTopoMap
+                (<a href="https://creativecommons.org/licenses/by-sa/3.0/"
+                    target="_blank" rel="noopener noreferrer">CC&nbsp;BY-SA&nbsp;3.0</a>);
+                data © OpenStreetMap contributors and SRTM.
+                <br /><br />
+                <strong>Important:</strong> CC BY-SA is a "share-alike"
+                licence. If you publish a design that includes a Terrain
+                export, the published work inherits CC&nbsp;BY-SA&nbsp;3.0 and
+                must credit both <em>OpenTopoMap</em> and
+                <em>OpenStreetMap contributors</em>. The Voyager / Light /
+                Dark / Satellite styles do <em>not</em> have this constraint —
+                they only require credit.
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener noreferrer">Nominatim</a>
+              </div>
+              <div class="meta">
+                Search powered by Nominatim, operated by the OpenStreetMap
+                Foundation. Subject to the
+                <a href="https://operations.osmfoundation.org/policies/nominatim/"
+                   target="_blank" rel="noopener noreferrer">Nominatim Usage Policy</a>.
+              </div>
+            </li>
+            <li>
+              <div class="name">
+                <a href="https://openrouteservice.org" target="_blank" rel="noopener noreferrer">OpenRouteService</a>
+              </div>
+              <div class="meta">
+                Driving directions for the <strong>Roads</strong> route type.
+                Operated by
+                <a href="https://heigit.org" target="_blank" rel="noopener noreferrer">HeiGIT</a>
+                using OpenStreetMap data. Free tier (2,000 routes/day) requires
+                a per-user API key — see the Routes tab for setup.
+              </div>
+            </li>
+          </ul>
+          <p class="foot">
+            Per-basemap attribution is also shown live in the bottom-right of
+            the map preview while you work.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!--SCRIPT-->
+  </body>
+</html>

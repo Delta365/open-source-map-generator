@@ -1,0 +1,20 @@
+{
+  "name": "Open Source - Map Generator",
+  "id": "map-generator-mapcn",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma", "figjam"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "https://basemaps.cartocdn.com",
+      "https://*.basemaps.cartocdn.com",
+      "https://nominatim.openstreetmap.org",
+      "https://server.arcgisonline.com",
+      "https://*.tile.opentopomap.org",
+      "https://api.openrouteservice.org"
+    ],
+    "reasoning": "Fetches CARTO basemap vector tiles, Esri World Imagery raster tiles (Satellite style) and OpenTopoMap tiles (Terrain style) for map rendering, Nominatim for place search, and OpenRouteService (HeiGIT) for the Roads routing feature using a user-supplied free API key. MapLibre GL is bundled into the plugin."
+  }
+}
