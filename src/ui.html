@@ -846,9 +846,22 @@
         flex-shrink: 0;
       }
       .header-icon:hover { background: var(--bg-hover); color: var(--text); }
-      .header-left {
-        display: flex; align-items: center; gap: 6px;
-        min-width: 0;
+
+      /* "Resources" link in the header — opens the About modal. The plugin
+         title is already rendered in Figma's chrome above the iframe, so
+         the header just needs to surface the About / Credits affordance. */
+      .resources-link {
+        appearance: none; border: 0; background: transparent;
+        color: var(--brand);
+        font: inherit; font-weight: 600;
+        padding: 4px 6px;
+        margin-left: -6px;          /* keep visual edge aligned with padding */
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .resources-link:hover {
+        background: var(--bg-hover);
+        text-decoration: underline;
       }
 
       .modal-backdrop {
@@ -935,18 +948,10 @@
 
   <body>
     <header class="header">
-      <div class="header-left">
-        <div class="title">Open Source - Map Generator</div>
-        <button id="about-btn" class="header-icon" type="button" title="About &amp; credits" aria-label="About">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-        </button>
-      </div>
+      <button id="about-btn" class="resources-link" type="button"
+              title="View credits, licences and source on GitHub">
+        Resources
+      </button>
       <label class="field">
         Style
         <select id="style-select" aria-label="Map style"></select>
