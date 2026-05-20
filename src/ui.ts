@@ -153,10 +153,11 @@ const PINS_LABEL_LAYER = "user-pins-label";
 const ROUTES_SOURCE = "user-routes";
 const ROUTES_LINE_LAYER = "user-routes-line";
 
-// OpenRouteService driving-car directions endpoint. Requires a free API key
-// supplied by each user (set in the Routes tab). HeiGIT-operated, OSM-based.
-const ORS_DIRECTIONS_URL =
-  "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+// OpenRouteService directions endpoint base. The mode (driving-car,
+// cycling-regular, foot-walking) is appended at call time. Requires a free
+// API key supplied by each user (set in the Routes tab). HeiGIT-operated.
+const ORS_DIRECTIONS_BASE =
+  "https://api.openrouteservice.org/v2/directions";
 
 // =============================================================================
 // DOM refs
@@ -466,9 +467,16 @@ function renderPinChips(): void {
       }
     });
 
+    const dotEl = row.querySelector(".dot") as HTMLSpanElement;
+    dotEl.title = "Click to change color";
+    dotEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openPinColorPicker(p.id, p.color);
+    });
+
     row.addEventListener("dblclick", (e) => {
       const t = e.target as HTMLElement;
-      if (t.closest(".name") || t.closest(".remove")) return;
+      if (t.closest(".name") || t.closest(".remove") || t.closest(".dot")) return;
       map.flyTo({
         center: [p.lng, p.lat],
         zoom: Math.max(map.getZoom(), 13),
@@ -483,6 +491,40 @@ function renderPinChips(): void {
     pinChips.appendChild(row);
   });
 }
+
+// ---- Per-pin colour picker (native <input type="color">) -----------------
+//
+// One shared hidden input is reused for every pin. Live preview updates the
+// map on every `input` event (as the user moves through the colour wheel);
+// `change` fires when the picker closes and is when we re-render the chip
+// list so the swatch in the row reflects the final pick.
+
+const pinColorPicker = $<HTMLInputElement>("#pin-color-picker");
+let activeColorPinId: string | null = null;
+
+function openPinColorPicker(pinId: string, currentColor: string): void {
+  activeColorPinId = pinId;
+  pinColorPicker.value = currentColor;
+  pinColorPicker.click();
+}
+
+pinColorPicker.addEventListener("input", () => {
+  if (!activeColorPinId) return;
+  const pin = pins.find((pp) => pp.id === activeColorPinId);
+  if (!pin) return;
+  pin.color = pinColorPicker.value;
+  refreshPinsSource();
+  // Update the dot's background in the existing row without a full re-render
+  // so live preview doesn't blow away the user's cursor / focus.
+  const liveDot = document.querySelector<HTMLSpanElement>(
+    `.pin-item[data-pin-id="${activeColorPinId}"] .dot`,
+  );
+  if (liveDot) liveDot.style.background = pin.color;
+});
+
+pinColorPicker.addEventListener("change", () => {
+  activeColorPinId = null;
+});
 
 function setPinMode(on: boolean): void {
   pinMode = on;
@@ -1108,8 +1150,7 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
               continue;
             }
             exportRoutes.push({
-              name:
-                `${shortPlaceName(r.from.name)} → ${shortPlaceName(r.to.name)}`,
+              name: routeDisplayName(r),
               color: r.color,
               type: r.type,
               points,
@@ -1363,24 +1404,28 @@ window.addEventListener("message", (event: MessageEvent) => {
 // Routes — Roads (OSRM) + Arc (bezier-bow), with From/To autocomplete
 // =============================================================================
 
-interface RoutePoint {
-  name: string;
-  lng: number;
-  lat: number;
-}
-
+// A route is a sequence of >= 2 waypoints connected either by real driving
+// directions (type: "roads", with a transport mode) or by a continuous
+// bezier arc (type: "arc"). The `coordinates` are the rendered polyline;
+// `waypoints` are the user's picks.
 interface Route {
   id: string;
-  from: RoutePoint;
-  to: RoutePoint;
+  waypoints: PlacePick[];
   type: "roads" | "arc";
+  mode?: RoutingMode;        // only set for "roads" routes
   coordinates: [number, number][];
   distanceKm: number;
   color: string;
 }
 
+type RoutingMode = "driving-car" | "cycling-regular" | "foot-walking";
+
 const routes: Route[] = [];
 let routeSeq = 1;
+
+// Current selected routing profile for the Routes tab (Roads). User picks via
+// the segmented Car / Bike / Walk control; Arc tab ignores this.
+let currentRoutingMode: RoutingMode = "driving-car";
 
 // User-supplied OpenRouteService API key. Persisted via figma.clientStorage,
 // loaded on init via the "init" message from the plugin sandbox.
@@ -1432,26 +1477,58 @@ function arcCurve(
   return points;
 }
 
+// Chained arc — a single bezier between each consecutive pair, joined end-
+// to-end so the user gets one continuous polyline through every waypoint.
+function multiArcCurve(points: Array<[number, number]>): [number, number][] {
+  if (points.length < 2) return points.slice();
+  const result: [number, number][] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const segment = arcCurve(points[i], points[i + 1]);
+    if (i === 0) result.push(...segment);
+    else result.push(...segment.slice(1)); // skip the duplicated join point
+  }
+  return result;
+}
+
+// Display helpers for route list / export naming
+function routeDisplayName(r: Route): string {
+  const names = r.waypoints.map((w) => shortPlaceName(w.name));
+  if (names.length <= 3) return names.join(" → ");
+  return `${names[0]} → +${names.length - 2} → ${names[names.length - 1]}`;
+}
+
+function modeLabel(r: Route): string {
+  if (r.type === "arc") return "Arc";
+  switch (r.mode) {
+    case "cycling-regular": return "Bike";
+    case "foot-walking": return "Walk";
+    default: return "Car";
+  }
+}
+
 async function fetchOrsRoute(
-  start: [number, number],
-  end: [number, number],
+  waypointCoords: Array<[number, number]>,
+  mode: RoutingMode,
 ): Promise<{ coordinates: [number, number][]; distanceKm: number }> {
   if (!orsApiKey) {
     throw new Error(
       "Add your OpenRouteService API key (top of Routes tab) before using Roads.",
     );
   }
+  if (waypointCoords.length < 2) {
+    throw new Error("Need at least two waypoints for a route.");
+  }
 
   let res: Response;
   try {
-    res = await fetch(ORS_DIRECTIONS_URL, {
+    res = await fetch(`${ORS_DIRECTIONS_BASE}/${mode}/geojson`, {
       method: "POST",
       headers: {
         Authorization: orsApiKey,
         "Content-Type": "application/json",
         Accept: "application/geo+json, application/json",
       },
-      body: JSON.stringify({ coordinates: [start, end] }),
+      body: JSON.stringify({ coordinates: waypointCoords }),
     });
   } catch {
     throw new Error("Network error contacting OpenRouteService.");
@@ -1744,16 +1821,14 @@ function removeRoute(id: string): void {
   refreshAllRouteLists();
 }
 
-// ---- Section factory — wires up the form, list, and add/clear actions for
-// one tab (Arc or Routes). Both tabs share the same routes[] state but each
-// only sees its own type in the list view.
+// ---- Section factory — wires up the dynamic-waypoint form, list, and
+// add/clear actions for one tab (Arc or Routes). Both tabs share the same
+// routes[] state but each only sees its own type in the list view.
 
 interface RouteSectionOpts {
   type: "roads" | "arc";
-  fromInputId: string;
-  toInputId: string;
-  fromPopId: string;
-  toPopId: string;
+  waypointsContainerId: string;
+  addStopBtnId: string;
   addBtnId: string;
   clearBtnId: string;
   countElId: string;
@@ -1764,34 +1839,126 @@ interface RouteSectionOpts {
   nounPlural: string;
 }
 
+const MIN_WAYPOINTS = 2;
+const MAX_WAYPOINTS = 8;
+
+interface WaypointEntry {
+  rowEl: HTMLDivElement;
+  input: HTMLInputElement;
+  autocomplete: PlaceAutocompleteHandle;
+  removeBtn: HTMLButtonElement;
+  labelEl: HTMLLabelElement;
+}
+
 function setupRouteSection(opts: RouteSectionOpts): void {
-  const fromInput = $<HTMLInputElement>("#" + opts.fromInputId);
-  const fromPop = $<HTMLDivElement>("#" + opts.fromPopId);
-  const toInput = $<HTMLInputElement>("#" + opts.toInputId);
-  const toPop = $<HTMLDivElement>("#" + opts.toPopId);
+  const waypointsContainer =
+    $<HTMLDivElement>("#" + opts.waypointsContainerId);
+  const addStopBtn = $<HTMLButtonElement>("#" + opts.addStopBtnId);
   const addBtn = $<HTMLButtonElement>("#" + opts.addBtnId);
   const clearBtn = $<HTMLButtonElement>("#" + opts.clearBtnId);
   const countEl = $<HTMLSpanElement>("#" + opts.countElId);
   const listEl = $<HTMLDivElement>("#" + opts.listElId);
   const emptyEl = $<HTMLElement>("#" + opts.emptyElId);
 
+  const waypoints: WaypointEntry[] = [];
+
   const updateEnabled = (): void => {
-    addBtn.disabled =
-      fromAutocomplete.getCurrent() === null ||
-      toAutocomplete.getCurrent() === null;
+    const allPicked =
+      waypoints.length >= MIN_WAYPOINTS &&
+      waypoints.every((wp) => wp.autocomplete.getCurrent() !== null);
+    addBtn.disabled = !allPicked;
+    addStopBtn.disabled = waypoints.length >= MAX_WAYPOINTS;
   };
 
-  const fromAutocomplete = attachPlaceAutocomplete(fromInput, fromPop, () =>
-    updateEnabled(),
-  );
-  const toAutocomplete = attachPlaceAutocomplete(toInput, toPop, () =>
-    updateEnabled(),
-  );
+  const labelForIndex = (i: number, total: number): string => {
+    if (i === 0) return "From";
+    if (i === total - 1) return "To";
+    return "Via";
+  };
 
-  // Re-evaluate when the field is cleared by hand.
-  [fromInput, toInput].forEach((input) =>
-    input.addEventListener("input", updateEnabled),
-  );
+  const placeholderForLabel = (label: string): string => {
+    if (label === "From") return "Start location";
+    if (label === "To") return "End location";
+    return "Stop location";
+  };
+
+  const relabelAll = (): void => {
+    waypoints.forEach((wp, i) => {
+      const label = labelForIndex(i, waypoints.length);
+      wp.labelEl.textContent = label;
+      wp.input.placeholder = placeholderForLabel(label);
+      // Only the middle (Via) rows show a remove button.
+      const isMiddle = i > 0 && i < waypoints.length - 1;
+      wp.removeBtn.style.display = isMiddle ? "" : "none";
+    });
+  };
+
+  const createWaypointEntry = (): WaypointEntry => {
+    const row = document.createElement("div");
+    row.className = "waypoint-row";
+    row.innerHTML = `
+      <div class="waypoint-row-top">
+        <label class="route-label">From</label>
+        <button type="button" class="remove-waypoint"
+                aria-label="Remove this stop" title="Remove this stop">×</button>
+      </div>
+      <div class="autocomplete-wrap">
+        <input class="route-input" type="search"
+               autocomplete="off" spellcheck="false" />
+        <div class="recent-pop autocomplete-pop" role="listbox"></div>
+      </div>
+    `;
+    const input = row.querySelector(".route-input") as HTMLInputElement;
+    const pop = row.querySelector(".autocomplete-pop") as HTMLDivElement;
+    const labelEl = row.querySelector(".route-label") as HTMLLabelElement;
+    const removeBtn = row.querySelector(".remove-waypoint") as HTMLButtonElement;
+    const autocomplete = attachPlaceAutocomplete(input, pop, () =>
+      updateEnabled(),
+    );
+    input.addEventListener("input", updateEnabled);
+
+    const entry: WaypointEntry = { rowEl: row, input, autocomplete, removeBtn, labelEl };
+
+    removeBtn.addEventListener("click", () => {
+      if (waypoints.length <= MIN_WAYPOINTS) return;
+      const idx = waypoints.indexOf(entry);
+      if (idx === -1) return;
+      waypoints.splice(idx, 1);
+      row.remove();
+      relabelAll();
+      updateEnabled();
+    });
+
+    return entry;
+  };
+
+  const insertWaypointBeforeLast = (): void => {
+    if (waypoints.length >= MAX_WAYPOINTS) return;
+    const entry = createWaypointEntry();
+    const lastIdx = waypoints.length - 1;
+    waypoints.splice(lastIdx, 0, entry);
+    waypointsContainer.insertBefore(
+      entry.rowEl,
+      waypoints[waypoints.length - 1].rowEl,
+    );
+    relabelAll();
+    updateEnabled();
+    entry.input.focus();
+  };
+
+  const addInitialWaypoint = (): void => {
+    const entry = createWaypointEntry();
+    waypoints.push(entry);
+    waypointsContainer.appendChild(entry.rowEl);
+  };
+
+  // Initial setup: From + To.
+  addInitialWaypoint();
+  addInitialWaypoint();
+  relabelAll();
+  updateEnabled();
+
+  addStopBtn.addEventListener("click", insertWaypointBeforeLast);
 
   const renderList = (): void => {
     const items = routes.filter((r) => r.type === opts.type);
@@ -1808,13 +1975,14 @@ function setupRouteSection(opts: RouteSectionOpts): void {
       const row = document.createElement("div");
       row.className = "route-item";
       row.dataset.routeId = r.id;
-      row.title = `${r.from.name}\n→ ${r.to.name}\nDouble-click to fit map`;
-      const typeLabel = r.type === "roads" ? "Roads" : "Arc";
+      row.title = `${r.waypoints
+        .map((w) => w.name)
+        .join("\n→ ")}\nDouble-click to fit map`;
       row.innerHTML = `
         <div class="stripe" style="background:${r.color}"></div>
         <div class="meta">
-          <span class="label">${escapeHtml(shortPlaceName(r.from.name))} → ${escapeHtml(shortPlaceName(r.to.name))}</span>
-          <span class="sub">${typeLabel} · ${formatDistance(r.distanceKm)}</span>
+          <span class="label">${escapeHtml(routeDisplayName(r))}</span>
+          <span class="sub">${modeLabel(r)} · ${formatDistance(r.distanceKm)}</span>
         </div>
         <button class="remove" type="button" aria-label="Remove" title="Remove">×</button>
       `;
@@ -1833,7 +2001,6 @@ function setupRouteSection(opts: RouteSectionOpts): void {
   sectionRenderers.push(renderList);
 
   const clearAllOfType = (): void => {
-    // Splice in reverse so indices don't shift mid-loop.
     for (let i = routes.length - 1; i >= 0; i--) {
       if (routes[i].type === opts.type) routes.splice(i, 1);
     }
@@ -1841,44 +2008,75 @@ function setupRouteSection(opts: RouteSectionOpts): void {
     refreshAllRouteLists();
   };
 
+  const resetForm = (): void => {
+    // Drop any Via rows added by the user; reset From + To values.
+    while (waypoints.length > MIN_WAYPOINTS) {
+      const last = waypoints.pop();
+      last?.rowEl.remove();
+    }
+    waypoints.forEach((wp) => wp.autocomplete.reset());
+    relabelAll();
+    updateEnabled();
+  };
+
   const addOne = async (): Promise<void> => {
-    const from = fromAutocomplete.getCurrent();
-    const to = toAutocomplete.getCurrent();
-    if (!from || !to) return;
-    if (from.lng === to.lng && from.lat === to.lat) {
-      showStatus("From and To are the same location.", true);
-      return;
+    const picks = waypoints.map((wp) => wp.autocomplete.getCurrent());
+    if (picks.length < 2 || picks.some((p) => p === null)) return;
+    const validPicks = picks as PlacePick[];
+
+    // ORS rejects consecutive duplicates and arcs would collapse.
+    for (let i = 1; i < validPicks.length; i++) {
+      if (
+        validPicks[i].lng === validPicks[i - 1].lng &&
+        validPicks[i].lat === validPicks[i - 1].lat
+      ) {
+        showStatus("Consecutive stops are at the same location.", true);
+        return;
+      }
     }
 
     addBtn.disabled = true;
     addBtn.innerHTML = '<span class="spinner"></span>Adding…';
 
     try {
+      const waypointCoords: Array<[number, number]> = validPicks.map((p) => [
+        p.lng,
+        p.lat,
+      ]);
+
       let coordinates: [number, number][];
       let distanceKm: number;
+      let mode: RoutingMode | undefined;
       if (opts.type === "roads") {
-        const r = await fetchOrsRoute([from.lng, from.lat], [to.lng, to.lat]);
+        mode = currentRoutingMode;
+        const r = await fetchOrsRoute(waypointCoords, mode);
         coordinates = r.coordinates;
         distanceKm = r.distanceKm;
       } else {
-        coordinates = arcCurve([from.lng, from.lat], [to.lng, to.lat]);
-        distanceKm = haversineKm([from.lng, from.lat], [to.lng, to.lat]);
+        coordinates = multiArcCurve(waypointCoords);
+        // Arcs report cumulative great-circle distance.
+        distanceKm = 0;
+        for (let i = 1; i < waypointCoords.length; i++) {
+          distanceKm += haversineKm(waypointCoords[i - 1], waypointCoords[i]);
+        }
       }
 
       const id = `route-${Date.now()}-${routeSeq++}`;
-      // Colour cycle is per-type so each tab feels independent.
       const sameTypeCount = routes.filter((r) => r.type === opts.type).length;
       const color = ROUTE_COLORS[sameTypeCount % ROUTE_COLORS.length];
       routes.push({
-        id, from, to,
+        id,
+        waypoints: validPicks,
         type: opts.type,
-        coordinates, distanceKm, color,
+        mode,
+        coordinates,
+        distanceKm,
+        color,
       });
       refreshRoutesSource();
       refreshAllRouteLists();
       fitBoundsToRoute(coordinates);
-      fromAutocomplete.reset();
-      toAutocomplete.reset();
+      resetForm();
       showStatus(
         `Added ${opts.type === "roads" ? "driving route" : "arc"} ` +
         `(${formatDistance(distanceKm)})`,
@@ -1895,15 +2093,29 @@ function setupRouteSection(opts: RouteSectionOpts): void {
   clearBtn.addEventListener("click", clearAllOfType);
 }
 
-// Wire up both tab sections. Arc tab is positioned 2nd (after Pins) and
-// Routes tab 3rd; the order here just affects which renderList is called
-// first when something changes — both lists update either way.
+// Routing-mode (Car / Bike / Walk) selector — only the Routes tab has this
+// control; Arc tab ignores it.
+document
+  .querySelectorAll<HTMLButtonElement>(".mode-selector .seg-btn")
+  .forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.routingMode as RoutingMode | undefined;
+      if (!mode || mode === currentRoutingMode) return;
+      currentRoutingMode = mode;
+      document
+        .querySelectorAll<HTMLButtonElement>(".mode-selector .seg-btn")
+        .forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-selected", active ? "true" : "false");
+        });
+    });
+  });
+
 setupRouteSection({
   type: "arc",
-  fromInputId: "arc-from",
-  toInputId: "arc-to",
-  fromPopId: "arc-from-pop",
-  toPopId: "arc-to-pop",
+  waypointsContainerId: "arc-waypoints",
+  addStopBtnId: "add-arc-stop",
   addBtnId: "add-arc",
   clearBtnId: "clear-arcs",
   countElId: "arc-count",
@@ -1916,10 +2128,8 @@ setupRouteSection({
 
 setupRouteSection({
   type: "roads",
-  fromInputId: "route-from",
-  toInputId: "route-to",
-  fromPopId: "route-from-pop",
-  toPopId: "route-to-pop",
+  waypointsContainerId: "route-waypoints",
+  addStopBtnId: "add-route-stop",
   addBtnId: "add-route",
   clearBtnId: "clear-routes",
   countElId: "route-count",

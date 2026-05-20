@@ -499,9 +499,13 @@
       }
       .pin-item:hover { background: var(--bg-hover); }
       .pin-item .dot {
-        width: 10px; height: 10px; border-radius: 50%;
+        width: 12px; height: 12px; border-radius: 50%;
         flex-shrink: 0;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        transition: transform 100ms ease;
       }
+      .pin-item .dot:hover { transform: scale(1.15); }
       .pin-item .pin-meta {
         flex: 1; min-width: 0;
         display: flex; flex-direction: column;
@@ -547,6 +551,55 @@
       .route-input-row {
         display: flex; flex-direction: column;
         gap: 4px;
+      }
+
+      /* --- Multi-stop waypoint list --------------------------------- */
+
+      .waypoints-container {
+        display: flex; flex-direction: column;
+        gap: 8px;
+      }
+
+      .waypoint-row {
+        display: flex; flex-direction: column;
+        gap: 4px;
+      }
+      .waypoint-row-top {
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .waypoint-row .remove-waypoint {
+        appearance: none; border: 0; background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        width: 18px; height: 18px;
+        border-radius: 3px;
+        font-size: 13px; line-height: 1;
+        padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      .waypoint-row .remove-waypoint:hover {
+        background: var(--bg-hover); color: var(--text);
+      }
+
+      .add-stop-btn {
+        align-self: flex-start;
+        appearance: none; border: 0; background: transparent;
+        color: var(--brand);
+        padding: 2px 0;
+        font: inherit; font-weight: 500;
+        cursor: pointer;
+        margin-top: -4px; margin-bottom: 4px;
+      }
+      .add-stop-btn:hover { text-decoration: underline; }
+      .add-stop-btn:disabled {
+        color: var(--text-secondary);
+        cursor: not-allowed;
+        text-decoration: none;
+      }
+
+      .mode-selector {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 4px;
       }
       .route-label {
         font-size: 9px; font-weight: 600;
@@ -978,26 +1031,10 @@
           </div>
           <div class="tab-pane" data-pane="arc" role="tabpanel">
             <div class="route-form">
-              <div class="route-input-row">
-                <label class="route-label" for="arc-from">From</label>
-                <div class="autocomplete-wrap">
-                  <input id="arc-from" class="route-input" type="search"
-                         placeholder="Start location" autocomplete="off"
-                         spellcheck="false" />
-                  <div id="arc-from-pop" class="recent-pop autocomplete-pop"
-                       role="listbox"></div>
-                </div>
-              </div>
-              <div class="route-input-row">
-                <label class="route-label" for="arc-to">To</label>
-                <div class="autocomplete-wrap">
-                  <input id="arc-to" class="route-input" type="search"
-                         placeholder="End location" autocomplete="off"
-                         spellcheck="false" />
-                  <div id="arc-to-pop" class="recent-pop autocomplete-pop"
-                       role="listbox"></div>
-                </div>
-              </div>
+              <div id="arc-waypoints" class="waypoints-container"></div>
+              <button id="add-arc-stop" class="add-stop-btn" type="button">
+                + Add stop
+              </button>
 
               <div class="route-actions">
                 <button id="add-arc" class="btn" type="button" disabled>
@@ -1057,24 +1094,20 @@
                 </div>
               </div>
 
-              <div class="route-input-row">
-                <label class="route-label" for="route-from">From</label>
-                <div class="autocomplete-wrap">
-                  <input id="route-from" class="route-input" type="search"
-                         placeholder="Start location" autocomplete="off"
-                         spellcheck="false" />
-                  <div id="route-from-pop" class="recent-pop autocomplete-pop"
-                       role="listbox"></div>
-                </div>
-              </div>
-              <div class="route-input-row">
-                <label class="route-label" for="route-to">To</label>
-                <div class="autocomplete-wrap">
-                  <input id="route-to" class="route-input" type="search"
-                         placeholder="End location" autocomplete="off"
-                         spellcheck="false" />
-                  <div id="route-to-pop" class="recent-pop autocomplete-pop"
-                       role="listbox"></div>
+              <div id="route-waypoints" class="waypoints-container"></div>
+              <button id="add-route-stop" class="add-stop-btn" type="button">
+                + Add stop
+              </button>
+
+              <div class="mode-selector">
+                <span class="route-label">Mode</span>
+                <div class="seg-control" role="tablist">
+                  <button class="seg-btn active" data-routing-mode="driving-car"
+                          type="button" role="tab" aria-selected="true">Car</button>
+                  <button class="seg-btn" data-routing-mode="cycling-regular"
+                          type="button" role="tab" aria-selected="false">Bike</button>
+                  <button class="seg-btn" data-routing-mode="foot-walking"
+                          type="button" role="tab" aria-selected="false">Walk</button>
                 </div>
               </div>
 
@@ -1260,6 +1293,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Hidden color input — triggered programmatically when the user
+         clicks a pin's colour dot in the Pins tab. One shared instance is
+         repurposed per pin. -->
+    <input id="pin-color-picker" type="color"
+           style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;" />
 
     <!--SCRIPT-->
   </body>
