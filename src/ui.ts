@@ -353,6 +353,10 @@ function ensurePinsLayers(target: any): void {
         "circle-color": ["get", "color"],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 2,
+        // Render the circle flat on the ground plane so it foreshortens
+        // with the camera's pitch — when the user tilts the map, the pin
+        // becomes an ellipse instead of staying a face-on disc.
+        "circle-pitch-alignment": "map",
       },
     });
   }
@@ -1212,6 +1216,9 @@ async function doExport(): Promise<void> {
           styleLabel: STYLES.find((s) => s.id === currentStyleId)!.label,
           pins: data.pins,
           routes: data.routes,
+          // Pitch is sent so the plugin can foreshorten each pin's ellipse
+          // by cos(pitch) — matching what the user sees in the preview.
+          pitch: map.getPitch(),
         },
       },
       "*",

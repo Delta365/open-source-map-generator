@@ -39,6 +39,9 @@ interface ExportMessage {
   styleLabel?: string;
   pins?: ExportPin[];
   routes?: ExportRoute[];
+  // Camera pitch in degrees, 0–60. Used to foreshorten pin ellipses so they
+  // look like ground-aligned discs at the same pitch the user is viewing.
+  pitch?: number;
 }
 
 interface ReadyMessage {
@@ -241,13 +244,21 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           pinsFrame.fills = [];
           pinsFrame.clipsContent = false;
 
-          const dotSize = 14;
+          // Match MapLibre's circle-radius:8 (diameter 16). Each pin is a
+          // ground-aligned disc, so when the map is pitched, the ellipse
+          // is foreshortened vertically by cos(pitch).
+          const dotW = 16;
+          const pitchDeg = typeof msg.pitch === "number"
+            ? Math.max(0, Math.min(60, msg.pitch))
+            : 0;
+          const dotH = Math.max(2, dotW * Math.cos((pitchDeg * Math.PI) / 180));
+
           for (const pin of pins) {
             const ellipse = figma.createEllipse();
             ellipse.name = pin.label || "Pin";
-            ellipse.resize(dotSize, dotSize);
-            ellipse.x = pin.x - dotSize / 2;
-            ellipse.y = pin.y - dotSize / 2;
+            ellipse.resize(dotW, dotH);
+            ellipse.x = pin.x - dotW / 2;
+            ellipse.y = pin.y - dotH / 2;
             ellipse.fills = [
               { type: "SOLID", color: hexToRgb(pin.color) },
             ];
@@ -272,9 +283,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
               text.strokeWeight = 3;
               text.strokeAlign = "OUTSIDE";
               text.name = pin.label;
-              // Below the dot, horizontally centred on the pin.
+              // Below the (possibly foreshortened) dot, horizontally centred.
               text.x = Math.round(pin.x - text.width / 2);
-              text.y = Math.round(pin.y + dotSize / 2 + 4);
+              text.y = Math.round(pin.y + dotH / 2 + 4);
               pinsFrame.appendChild(text);
             }
           }
