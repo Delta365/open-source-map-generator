@@ -1,5 +1,6 @@
 # Open Source - Map Generator
 
+[![Figma Community](https://img.shields.io/badge/Figma-Community-blue?logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1634119857644827615)
 [![build](https://github.com/Delta365/open-source-map-generator/actions/workflows/build.yml/badge.svg)](https://github.com/Delta365/open-source-map-generator/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -9,6 +10,15 @@ bezier arcs), and get back a layered Figma frame with the map, pins, and
 routes as independently editable layers.
 
 ![Cover](assets/cover.png)
+
+## Install
+
+The plugin is published on the Figma Community:
+
+**👉 [Open Source - Map Generator on Figma Community](https://www.figma.com/community/plugin/1634119857644827615)**
+
+Click **Open in…** to add it to Figma. Then run it any time via
+**Plugins → Open Source - Map Generator** in your Figma file.
 
 ## Features
 
