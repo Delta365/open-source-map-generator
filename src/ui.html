@@ -885,6 +885,8 @@
           <button class="panel-tab active" type="button" role="tab"
                   data-tab="pins" aria-selected="true">Pins</button>
           <button class="panel-tab" type="button" role="tab"
+                  data-tab="arc" aria-selected="false">Arc</button>
+          <button class="panel-tab" type="button" role="tab"
                   data-tab="routes" aria-selected="false">Routes</button>
         </div>
         <div class="panel-content">
@@ -901,6 +903,50 @@
               <strong>Drop pin</strong> button on the map itself.
             </p>
           </div>
+          <div class="tab-pane" data-pane="arc" role="tabpanel">
+            <div class="route-form">
+              <div class="route-input-row">
+                <label class="route-label" for="arc-from">From</label>
+                <div class="autocomplete-wrap">
+                  <input id="arc-from" class="route-input" type="search"
+                         placeholder="Start location" autocomplete="off"
+                         spellcheck="false" />
+                  <div id="arc-from-pop" class="recent-pop autocomplete-pop"
+                       role="listbox"></div>
+                </div>
+              </div>
+              <div class="route-input-row">
+                <label class="route-label" for="arc-to">To</label>
+                <div class="autocomplete-wrap">
+                  <input id="arc-to" class="route-input" type="search"
+                         placeholder="End location" autocomplete="off"
+                         spellcheck="false" />
+                  <div id="arc-to-pop" class="recent-pop autocomplete-pop"
+                       role="listbox"></div>
+                </div>
+              </div>
+
+              <div class="route-actions">
+                <button id="add-arc" class="btn" type="button" disabled>
+                  + Add arc
+                </button>
+                <button id="clear-arcs" class="btn" type="button" disabled>
+                  Clear
+                </button>
+                <span class="route-count" id="arc-count">No arcs</span>
+              </div>
+            </div>
+
+            <div id="arc-list" class="route-list"></div>
+            <p id="arc-empty" class="pin-empty">
+              No arcs yet. Pick a <strong>From</strong> and <strong>To</strong>
+              from the suggestions, then click <strong>+ Add arc</strong> to
+              draw a curved connecting line between them. Great for visualising
+              long-distance connections (flights, trade lanes) without using
+              real road geometry.
+            </p>
+          </div>
+
           <div class="tab-pane" data-pane="routes" role="tabpanel">
             <div class="route-form">
               <div class="api-key-section" id="api-key-section">
@@ -959,16 +1005,6 @@
                 </div>
               </div>
 
-              <div class="route-type">
-                <span class="route-label">Type</span>
-                <div class="seg-control" role="tablist">
-                  <button class="seg-btn active" data-route-type="roads"
-                          type="button" role="tab" aria-selected="true">Roads</button>
-                  <button class="seg-btn" data-route-type="arc"
-                          type="button" role="tab" aria-selected="false">Arc</button>
-                </div>
-              </div>
-
               <div class="route-actions">
                 <button id="add-route" class="btn" type="button" disabled>
                   + Add route
@@ -983,9 +1019,8 @@
             <div id="route-list" class="route-list"></div>
             <p id="route-empty" class="pin-empty">
               No routes yet. Pick a <strong>From</strong> and <strong>To</strong>
-              from the suggestions, then click <strong>+ Add route</strong>.
-              Use <strong>Roads</strong> for real driving directions or
-              <strong>Arc</strong> for a curved connection line.
+              from the suggestions, then click <strong>+ Add route</strong> to
+              fetch real driving directions from OpenRouteService.
             </p>
           </div>
         </div>

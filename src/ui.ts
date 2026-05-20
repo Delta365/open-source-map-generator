@@ -1357,7 +1357,6 @@ interface Route {
 
 const routes: Route[] = [];
 let routeSeq = 1;
-let currentRouteType: "roads" | "arc" = "roads";
 
 // User-supplied OpenRouteService API key. Persisted via figma.clientStorage,
 // loaded on init via the "init" message from the plugin sandbox.
@@ -1675,54 +1674,7 @@ function attachPlaceAutocomplete(
   };
 }
 
-// ---- Routes UI wiring -----------------------------------------------------
-
-const routeFromInput = $<HTMLInputElement>("#route-from");
-const routeFromPop = $<HTMLDivElement>("#route-from-pop");
-const routeToInput = $<HTMLInputElement>("#route-to");
-const routeToPop = $<HTMLDivElement>("#route-to-pop");
-const addRouteBtn = $<HTMLButtonElement>("#add-route");
-const clearRoutesBtn = $<HTMLButtonElement>("#clear-routes");
-const routeCountEl = $<HTMLSpanElement>("#route-count");
-const routeListEl = $<HTMLDivElement>("#route-list");
-const routeEmptyEl = $<HTMLParagraphElement>("#route-empty");
-
-function updateAddRouteEnabled(): void {
-  const ready =
-    fromAutocomplete.getCurrent() !== null &&
-    toAutocomplete.getCurrent() !== null;
-  addRouteBtn.disabled = !ready;
-}
-
-const fromAutocomplete = attachPlaceAutocomplete(
-  routeFromInput, routeFromPop, () => updateAddRouteEnabled(),
-);
-const toAutocomplete = attachPlaceAutocomplete(
-  routeToInput, routeToPop, () => updateAddRouteEnabled(),
-);
-
-// Re-evaluate when inputs are cleared/typed (autocomplete clears 'current'
-// on input, but we also want to disable Add when the field is emptied).
-[routeFromInput, routeToInput].forEach((input) => {
-  input.addEventListener("input", updateAddRouteEnabled);
-});
-
-document
-  .querySelectorAll<HTMLButtonElement>(".seg-btn[data-route-type]")
-  .forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const type = btn.dataset.routeType as "roads" | "arc" | undefined;
-      if (!type || type === currentRouteType) return;
-      currentRouteType = type;
-      document
-        .querySelectorAll<HTMLButtonElement>(".seg-btn[data-route-type]")
-        .forEach((b) => {
-          const active = b === btn;
-          b.classList.toggle("active", active);
-          b.setAttribute("aria-selected", active ? "true" : "false");
-        });
-    });
-  });
+// ---- Shared helpers used by both Arc and Routes tab sections -------------
 
 function fitBoundsToRoute(coords: [number, number][]): void {
   if (coords.length < 2) return;
@@ -1752,106 +1704,207 @@ function shortPlaceName(s: string): string {
   return (s.split(",")[0] || s).trim();
 }
 
-async function addRouteFromForm(): Promise<void> {
-  const from = fromAutocomplete.getCurrent();
-  const to = toAutocomplete.getCurrent();
-  if (!from || !to) return;
-  if (from.lng === to.lng && from.lat === to.lat) {
-    showStatus("From and To are the same location.", true);
-    return;
-  }
+// Each tab's renderList is registered here so an add/remove from one tab
+// refreshes the count + list in the other tab's panel too.
+const sectionRenderers: Array<() => void> = [];
 
-  addRouteBtn.disabled = true;
-  const previousLabel = addRouteBtn.textContent;
-  addRouteBtn.innerHTML = '<span class="spinner"></span>Adding…';
-
-  try {
-    let coordinates: [number, number][];
-    let distanceKm: number;
-    if (currentRouteType === "roads") {
-      const r = await fetchOrsRoute([from.lng, from.lat], [to.lng, to.lat]);
-      coordinates = r.coordinates;
-      distanceKm = r.distanceKm;
-    } else {
-      coordinates = arcCurve([from.lng, from.lat], [to.lng, to.lat]);
-      distanceKm = haversineKm([from.lng, from.lat], [to.lng, to.lat]);
-    }
-
-    const id = `route-${Date.now()}-${routeSeq++}`;
-    const color = ROUTE_COLORS[routes.length % ROUTE_COLORS.length];
-    routes.push({
-      id, from, to,
-      type: currentRouteType,
-      coordinates, distanceKm, color,
-    });
-    refreshRoutesSource();
-    renderRouteList();
-    fitBoundsToRoute(coordinates);
-    fromAutocomplete.reset();
-    toAutocomplete.reset();
-    showStatus(
-      `Added ${currentRouteType === "roads" ? "driving route" : "arc"} ` +
-      `(${formatDistance(distanceKm)})`,
-    );
-  } catch (err) {
-    showStatus(err instanceof Error ? err.message : String(err), true);
-  } finally {
-    addRouteBtn.textContent = previousLabel ?? "+ Add route";
-    updateAddRouteEnabled();
-  }
+function refreshAllRouteLists(): void {
+  for (const r of sectionRenderers) r();
 }
 
 function removeRoute(id: string): void {
   const i = routes.findIndex((r) => r.id === id);
   if (i === -1) return;
   routes.splice(i, 1);
-  renderRouteList();
   refreshRoutesSource();
+  refreshAllRouteLists();
 }
 
-function clearRoutes(): void {
-  routes.length = 0;
-  renderRouteList();
-  refreshRoutesSource();
+// ---- Section factory — wires up the form, list, and add/clear actions for
+// one tab (Arc or Routes). Both tabs share the same routes[] state but each
+// only sees its own type in the list view.
+
+interface RouteSectionOpts {
+  type: "roads" | "arc";
+  fromInputId: string;
+  toInputId: string;
+  fromPopId: string;
+  toPopId: string;
+  addBtnId: string;
+  clearBtnId: string;
+  countElId: string;
+  listElId: string;
+  emptyElId: string;
+  addLabel: string;
+  nounSingle: string;
+  nounPlural: string;
 }
 
-function renderRouteList(): void {
-  const n = routes.length;
-  routeCountEl.textContent =
-    n === 0 ? "No routes" : `${n} route${n === 1 ? "" : "s"}`;
-  clearRoutesBtn.disabled = n === 0;
-  routeEmptyEl.style.display = n === 0 ? "block" : "none";
-  routeListEl.innerHTML = "";
+function setupRouteSection(opts: RouteSectionOpts): void {
+  const fromInput = $<HTMLInputElement>("#" + opts.fromInputId);
+  const fromPop = $<HTMLDivElement>("#" + opts.fromPopId);
+  const toInput = $<HTMLInputElement>("#" + opts.toInputId);
+  const toPop = $<HTMLDivElement>("#" + opts.toPopId);
+  const addBtn = $<HTMLButtonElement>("#" + opts.addBtnId);
+  const clearBtn = $<HTMLButtonElement>("#" + opts.clearBtnId);
+  const countEl = $<HTMLSpanElement>("#" + opts.countElId);
+  const listEl = $<HTMLDivElement>("#" + opts.listElId);
+  const emptyEl = $<HTMLElement>("#" + opts.emptyElId);
 
-  routes.forEach((r) => {
-    const row = document.createElement("div");
-    row.className = "route-item";
-    row.dataset.routeId = r.id;
-    row.title =
-      `${r.from.name}\n→ ${r.to.name}\nDouble-click to fit map to route`;
-    const typeLabel = r.type === "roads" ? "Roads" : "Arc";
-    row.innerHTML = `
-      <div class="stripe" style="background:${r.color}"></div>
-      <div class="meta">
-        <span class="label">${escapeHtml(shortPlaceName(r.from.name))} → ${escapeHtml(shortPlaceName(r.to.name))}</span>
-        <span class="sub">${typeLabel} · ${formatDistance(r.distanceKm)}</span>
-      </div>
-      <button class="remove" type="button" aria-label="Remove route" title="Remove">×</button>
-    `;
-    row.addEventListener("dblclick", (e) => {
-      const t = e.target as HTMLElement;
-      if (t.closest(".remove")) return;
-      fitBoundsToRoute(r.coordinates);
-    });
-    row.querySelector(".remove")!.addEventListener("click", () => {
-      removeRoute(r.id);
-    });
-    routeListEl.appendChild(row);
-  });
+  const updateEnabled = (): void => {
+    addBtn.disabled =
+      fromAutocomplete.getCurrent() === null ||
+      toAutocomplete.getCurrent() === null;
+  };
+
+  const fromAutocomplete = attachPlaceAutocomplete(fromInput, fromPop, () =>
+    updateEnabled(),
+  );
+  const toAutocomplete = attachPlaceAutocomplete(toInput, toPop, () =>
+    updateEnabled(),
+  );
+
+  // Re-evaluate when the field is cleared by hand.
+  [fromInput, toInput].forEach((input) =>
+    input.addEventListener("input", updateEnabled),
+  );
+
+  const renderList = (): void => {
+    const items = routes.filter((r) => r.type === opts.type);
+    const n = items.length;
+    countEl.textContent =
+      n === 0
+        ? `No ${opts.nounPlural}`
+        : `${n} ${n === 1 ? opts.nounSingle : opts.nounPlural}`;
+    clearBtn.disabled = n === 0;
+    emptyEl.style.display = n === 0 ? "block" : "none";
+    listEl.innerHTML = "";
+
+    for (const r of items) {
+      const row = document.createElement("div");
+      row.className = "route-item";
+      row.dataset.routeId = r.id;
+      row.title = `${r.from.name}\n→ ${r.to.name}\nDouble-click to fit map`;
+      const typeLabel = r.type === "roads" ? "Roads" : "Arc";
+      row.innerHTML = `
+        <div class="stripe" style="background:${r.color}"></div>
+        <div class="meta">
+          <span class="label">${escapeHtml(shortPlaceName(r.from.name))} → ${escapeHtml(shortPlaceName(r.to.name))}</span>
+          <span class="sub">${typeLabel} · ${formatDistance(r.distanceKm)}</span>
+        </div>
+        <button class="remove" type="button" aria-label="Remove" title="Remove">×</button>
+      `;
+      row.addEventListener("dblclick", (e) => {
+        const t = e.target as HTMLElement;
+        if (t.closest(".remove")) return;
+        fitBoundsToRoute(r.coordinates);
+      });
+      row.querySelector(".remove")!.addEventListener("click", () => {
+        removeRoute(r.id);
+      });
+      listEl.appendChild(row);
+    }
+  };
+
+  sectionRenderers.push(renderList);
+
+  const clearAllOfType = (): void => {
+    // Splice in reverse so indices don't shift mid-loop.
+    for (let i = routes.length - 1; i >= 0; i--) {
+      if (routes[i].type === opts.type) routes.splice(i, 1);
+    }
+    refreshRoutesSource();
+    refreshAllRouteLists();
+  };
+
+  const addOne = async (): Promise<void> => {
+    const from = fromAutocomplete.getCurrent();
+    const to = toAutocomplete.getCurrent();
+    if (!from || !to) return;
+    if (from.lng === to.lng && from.lat === to.lat) {
+      showStatus("From and To are the same location.", true);
+      return;
+    }
+
+    addBtn.disabled = true;
+    addBtn.innerHTML = '<span class="spinner"></span>Adding…';
+
+    try {
+      let coordinates: [number, number][];
+      let distanceKm: number;
+      if (opts.type === "roads") {
+        const r = await fetchOrsRoute([from.lng, from.lat], [to.lng, to.lat]);
+        coordinates = r.coordinates;
+        distanceKm = r.distanceKm;
+      } else {
+        coordinates = arcCurve([from.lng, from.lat], [to.lng, to.lat]);
+        distanceKm = haversineKm([from.lng, from.lat], [to.lng, to.lat]);
+      }
+
+      const id = `route-${Date.now()}-${routeSeq++}`;
+      // Colour cycle is per-type so each tab feels independent.
+      const sameTypeCount = routes.filter((r) => r.type === opts.type).length;
+      const color = ROUTE_COLORS[sameTypeCount % ROUTE_COLORS.length];
+      routes.push({
+        id, from, to,
+        type: opts.type,
+        coordinates, distanceKm, color,
+      });
+      refreshRoutesSource();
+      refreshAllRouteLists();
+      fitBoundsToRoute(coordinates);
+      fromAutocomplete.reset();
+      toAutocomplete.reset();
+      showStatus(
+        `Added ${opts.type === "roads" ? "driving route" : "arc"} ` +
+        `(${formatDistance(distanceKm)})`,
+      );
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : String(err), true);
+    } finally {
+      addBtn.textContent = opts.addLabel;
+      updateEnabled();
+    }
+  };
+
+  addBtn.addEventListener("click", () => void addOne());
+  clearBtn.addEventListener("click", clearAllOfType);
 }
 
-addRouteBtn.addEventListener("click", () => void addRouteFromForm());
-clearRoutesBtn.addEventListener("click", clearRoutes);
+// Wire up both tab sections. Arc tab is positioned 2nd (after Pins) and
+// Routes tab 3rd; the order here just affects which renderList is called
+// first when something changes — both lists update either way.
+setupRouteSection({
+  type: "arc",
+  fromInputId: "arc-from",
+  toInputId: "arc-to",
+  fromPopId: "arc-from-pop",
+  toPopId: "arc-to-pop",
+  addBtnId: "add-arc",
+  clearBtnId: "clear-arcs",
+  countElId: "arc-count",
+  listElId: "arc-list",
+  emptyElId: "arc-empty",
+  addLabel: "+ Add arc",
+  nounSingle: "arc",
+  nounPlural: "arcs",
+});
+
+setupRouteSection({
+  type: "roads",
+  fromInputId: "route-from",
+  toInputId: "route-to",
+  fromPopId: "route-from-pop",
+  toPopId: "route-to-pop",
+  addBtnId: "add-route",
+  clearBtnId: "clear-routes",
+  countElId: "route-count",
+  listElId: "route-list",
+  emptyElId: "route-empty",
+  addLabel: "+ Add route",
+  nounSingle: "route",
+  nounPlural: "routes",
+});
 
 // ---- OpenRouteService API key UI ------------------------------------------
 
