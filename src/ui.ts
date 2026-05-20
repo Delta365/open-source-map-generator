@@ -197,6 +197,8 @@ const aboutModal = $<HTMLDivElement>("#about-modal");
 const aboutClose = $<HTMLButtonElement>("#about-close");
 const sidePanel = $<HTMLElement>("#side-panel");
 const panelToggle = $<HTMLButtonElement>("#panel-toggle");
+const firstRunHint = $<HTMLDivElement>("#first-run-hint");
+const firstRunDismiss = $<HTMLButtonElement>("#first-run-dismiss");
 
 // =============================================================================
 // State
@@ -1275,6 +1277,20 @@ panelToggle.addEventListener("click", () => {
   setPanelCollapsed(!isCollapsed);
 });
 
+// First-run hint: dismiss when the user clicks "Got it", or when they
+// click the panel toggle (they discovered it on their own — no longer
+// needs prompting). Idempotent: subsequent calls are no-ops.
+function dismissFirstRunHint(): void {
+  if (firstRunHint.hidden) return;
+  firstRunHint.hidden = true;
+  parent.postMessage(
+    { pluginMessage: { type: "save-first-run-hint" } },
+    "*",
+  );
+}
+firstRunDismiss.addEventListener("click", dismissFirstRunHint);
+panelToggle.addEventListener("click", dismissFirstRunHint);
+
 const panelTabs =
   document.querySelectorAll<HTMLButtonElement>(".panel-tab");
 const panelPanes =
@@ -1325,6 +1341,14 @@ window.addEventListener("message", (event: MessageEvent) => {
     if (typeof msg.orsKey === "string" && msg.orsKey.length > 0) {
       orsApiKey = msg.orsKey;
       showApiKeySavedMode();
+    }
+    // First-run hint pointing at the panel toggle. Only the first time on
+    // this device. Small delay so the plugin window settles before the
+    // hint pops in.
+    if (msg.firstRunHintShown !== true) {
+      window.setTimeout(() => {
+        if (firstRunHint.hidden) firstRunHint.hidden = false;
+      }, 700);
     }
   } else if (msg.type === "export-complete") {
     showStatus("Done. Frame placed in Figma.");

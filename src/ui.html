@@ -133,6 +133,9 @@
         padding: 8px 12px;
         border-bottom: 1px solid var(--border); flex-shrink: 0;
         position: relative;
+        /* So the first-run hint (absolutely positioned inside this row)
+           floats over the map area below instead of being painted under it. */
+        z-index: 30;
       }
       .search-row .search-input { flex: 1; }
       .recent-pop {
@@ -189,6 +192,64 @@
         text-align: center;
       }
       .recent-clear:hover { background: var(--bg-hover); }
+
+      /* --- First-run hint pointing at the panel toggle --------------- */
+
+      .first-run-hint {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 8px;
+        width: 240px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+        animation: hintIn 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      .first-run-hint[hidden] { display: none; }
+      .first-run-hint::before {
+        /* small triangle pointing up at the panel toggle button */
+        content: "";
+        position: absolute;
+        top: -6px;
+        right: 14px;
+        width: 10px;
+        height: 10px;
+        background: var(--bg);
+        border-left: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+        transform: rotate(45deg);
+      }
+      .first-run-hint .hint-title {
+        font-weight: 600;
+        font-size: 12px;
+        margin-bottom: 4px;
+        color: var(--text);
+      }
+      .first-run-hint .hint-body {
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+      }
+      .first-run-hint .hint-dismiss {
+        appearance: none;
+        border: 0;
+        background: var(--brand);
+        color: var(--on-brand);
+        padding: 5px 12px;
+        border-radius: 4px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .first-run-hint .hint-dismiss:hover { background: var(--brand-hover); }
+
+      @keyframes hintIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
 
       /* Map fills the whole .main; side panel overlays on top of it.
          No layout reflow when the panel toggles — the map stays put. */
@@ -861,6 +922,18 @@
         </svg>
       </button>
       <div id="recent-pop" class="recent-pop" role="listbox"></div>
+
+      <div id="first-run-hint" class="first-run-hint" role="dialog"
+           aria-label="Tip about the side panel" hidden>
+        <div class="hint-title">Try the side panel</div>
+        <div class="hint-body">
+          Drop pins, draw arcs, and add driving routes — all in the panel
+          that opens from this button.
+        </div>
+        <button id="first-run-dismiss" class="hint-dismiss" type="button">
+          Got it
+        </button>
+      </div>
     </div>
 
     <div class="main">

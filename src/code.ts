@@ -7,6 +7,7 @@
 
 const RECENT_KEY = "map-generator:recent-searches";
 const ORS_KEY_KEY = "map-generator:ors-api-key";
+const FIRST_RUN_HINT_KEY = "map-generator:first-run-hint-shown";
 
 // Single fixed window size: the side panel slides over the map (overlay),
 // so we don't need to resize when it opens or closes.
@@ -58,6 +59,10 @@ interface SaveRoutingKeyMessage {
   key: string;
 }
 
+interface SaveFirstRunHintMessage {
+  type: "save-first-run-hint";
+}
+
 interface CloseMessage {
   type: "close";
 }
@@ -78,6 +83,7 @@ type PluginMessage =
   | ReadyMessage
   | SaveRecentMessage
   | SaveRoutingKeyMessage
+  | SaveFirstRunHintMessage
   | CloseMessage
   | ResizeMessage
   | OpenUrlMessage;
@@ -86,6 +92,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === "ready") {
     let recent: string[] = [];
     let orsKey = "";
+    let firstRunHintShown = false;
     try {
       const stored = await figma.clientStorage.getAsync(RECENT_KEY);
       if (Array.isArray(stored)) {
@@ -100,7 +107,18 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     } catch {
       // Same — non-critical.
     }
-    figma.ui.postMessage({ type: "init", recent, orsKey });
+    try {
+      const seen = await figma.clientStorage.getAsync(FIRST_RUN_HINT_KEY);
+      firstRunHintShown = seen === true;
+    } catch {
+      // Default to false (show the hint) if storage isn't readable.
+    }
+    figma.ui.postMessage({
+      type: "init",
+      recent,
+      orsKey,
+      firstRunHintShown,
+    });
     return;
   }
 
@@ -127,6 +145,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
     } catch {
       // Best-effort.
+    }
+    return;
+  }
+
+  if (msg.type === "save-first-run-hint") {
+    try {
+      await figma.clientStorage.setAsync(FIRST_RUN_HINT_KEY, true);
+    } catch {
+      // Worst case the hint shows again next session; not a real problem.
     }
     return;
   }
