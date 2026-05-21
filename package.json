@@ -1,6 +1,6 @@
 {
   "name": "open-source-map-generator",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Figma plugin that exports high-resolution map sections into Figma frames. Built on MapLibre GL with CARTO, OpenStreetMap, Esri and OpenTopoMap basemaps.",
   "private": true,
   "scripts": {

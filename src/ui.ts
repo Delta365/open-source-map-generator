@@ -1013,15 +1013,34 @@ interface ExportRoute {
   points: { x: number; y: number }[];
 }
 
+// Each visible segment of a graticule line, projected to screen pixels.
+// One graticule line may produce multiple ExportGridLines if it crosses
+// behind the globe (the back half is dropped).
+interface ExportGridLine {
+  name: string;
+  points: { x: number; y: number }[];
+}
+
 interface ExportData {
   bytes: Uint8Array;
   pins: ExportPin[];
   routes: ExportRoute[];
+  gridLines: ExportGridLine[];
   // Counts of overlays we had to drop because they fell behind the camera in
   // a 3D-pitched view (project() returns nonsense for those points). Surfaced
   // as a status message after export so the user knows to reduce the pitch.
   skippedPins: number;
   skippedRoutes: number;
+}
+
+function formatGridLineName(kind: "meridian" | "parallel", value: number): string {
+  if (kind === "parallel") {
+    if (value === 0) return "Equator";
+    return `${Math.abs(value)}°${value > 0 ? "N" : "S"}`;
+  }
+  if (value === 0) return "Prime Meridian";
+  if (value === 180 || value === -180) return "180° (Antimeridian)";
+  return `${Math.abs(value)}°${value > 0 ? "E" : "W"}`;
 }
 
 // Project a lng/lat to screen pixels, returning null if the projection is
@@ -1106,12 +1125,11 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
       // remain editable after export.
 
       // Match the preview's projection (globe, auto-flattens to Mercator at
-      // zoom > ~12). Must be set after style.load. The graticule, if on,
-      // is rasterised into the basemap (not vectorised), so it just becomes
-      // part of the captured PNG.
+      // zoom > ~12). Must be set after style.load. The graticule, if on, is
+      // NOT rasterised here — we project its lines below and ship them as
+      // vector polylines so they stay editable in the Figma export.
       exportMap.on("style.load", () => {
         exportMap.setProjection({ type: "globe" });
-        if (graticuleVisible) ensureGraticuleLayers(exportMap);
       });
 
       timeoutId = window.setTimeout(
@@ -1176,6 +1194,35 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
             });
           }
 
+          // Graticule lines — only included if the user has the Grid toggle
+          // on. Each line is split into visible sub-segments wherever it
+          // crosses behind the globe; behind-camera vertices fail
+          // safeProject's round-trip check and act as natural break points.
+          const exportGridLines: ExportGridLine[] = [];
+          if (graticuleVisible) {
+            for (const feature of graticuleData.features) {
+              const name = formatGridLineName(
+                feature.properties.kind,
+                feature.properties.value,
+              );
+              let segment: { x: number; y: number }[] = [];
+              for (const c of feature.geometry.coordinates) {
+                const px = safeProject(exportMap, c[0], c[1]);
+                if (px) {
+                  segment.push(px);
+                } else if (segment.length > 0) {
+                  if (segment.length >= 2) {
+                    exportGridLines.push({ name, points: segment });
+                  }
+                  segment = [];
+                }
+              }
+              if (segment.length >= 2) {
+                exportGridLines.push({ name, points: segment });
+              }
+            }
+          }
+
           const canvas = exportMap.getCanvas() as HTMLCanvasElement;
           const mime = p.format === "jpeg" ? "image/jpeg" : "image/png";
           canvas.toBlob(
@@ -1191,6 +1238,7 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
                     bytes: new Uint8Array(buf),
                     pins: exportPins,
                     routes: exportRoutes,
+                    gridLines: exportGridLines,
                     skippedPins,
                     skippedRoutes,
                   }),
@@ -1278,6 +1326,7 @@ async function doExport(): Promise<void> {
           styleLabel: STYLES.find((s) => s.id === currentStyleId)!.label,
           pins: data.pins,
           routes: data.routes,
+          gridLines: data.gridLines,
           // Pitch is sent so the plugin can foreshorten each pin's ellipse
           // by cos(pitch) — matching what the user sees in the preview.
           pitch: map.getPitch(),

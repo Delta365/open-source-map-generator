@@ -33,6 +33,12 @@ interface ExportRoute {
   points: { x: number; y: number }[];
 }
 
+// Each visible segment of a graticule line, projected to screen pixels.
+interface ExportGridLine {
+  name: string;
+  points: { x: number; y: number }[];
+}
+
 interface ExportMessage {
   type: "export-map";
   bytes: Uint8Array;
@@ -41,6 +47,7 @@ interface ExportMessage {
   styleLabel?: string;
   pins?: ExportPin[];
   routes?: ExportRoute[];
+  gridLines?: ExportGridLine[];
   // Camera pitch in degrees, 0–60. Used to foreshorten pin ellipses so they
   // look like ground-aligned discs at the same pitch the user is viewing.
   pitch?: number;
@@ -217,7 +224,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       const h = Math.max(1, Math.round(msg.height || 1080));
       const pins = msg.pins ?? [];
       const routes = msg.routes ?? [];
-      const hasOverlays = pins.length > 0 || routes.length > 0;
+      const gridLines = msg.gridLines ?? [];
+      const hasOverlays =
+        pins.length > 0 || routes.length > 0 || gridLines.length > 0;
 
       // figma.createImage accepts both PNG and JPEG byte arrays.
       const image = figma.createImage(msg.bytes);
@@ -255,6 +264,44 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           { type: "IMAGE", scaleMode: "FILL", imageHash: image.hash },
         ];
         frame.appendChild(mapRect);
+
+        // Grid first, so it draws above the map raster but below the
+        // routes and pins. Each visible segment of a graticule line is its
+        // own native Figma vector polyline so users can recolour, restroke,
+        // or hide the whole grid as one selection.
+        if (gridLines.length > 0) {
+          const gridFrame = figma.createFrame();
+          gridFrame.name = "Grid";
+          gridFrame.resizeWithoutConstraints(w, h);
+          gridFrame.x = 0;
+          gridFrame.y = 0;
+          gridFrame.fills = [];
+          gridFrame.clipsContent = false;
+
+          for (const line of gridLines) {
+            if (!Array.isArray(line.points) || line.points.length < 2) continue;
+            const v = figma.createVector();
+            v.name = line.name;
+            v.vectorPaths = [
+              { windingRule: "NONE", data: buildPathData(line.points) },
+            ];
+            // Match the preview style: subtle grey, low opacity, dashed.
+            v.strokes = [
+              {
+                type: "SOLID",
+                color: { r: 0.48, g: 0.48, b: 0.48 },
+                opacity: 0.55,
+              },
+            ];
+            v.strokeWeight = 0.5;
+            v.strokeCap = "ROUND";
+            v.strokeJoin = "ROUND";
+            v.dashPattern = [2, 2];
+            v.fills = [];
+            gridFrame.appendChild(v);
+          }
+          frame.appendChild(gridFrame);
+        }
 
         if (routes.length > 0) {
           const routesFrame = figma.createFrame();
@@ -348,10 +395,17 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       figma.viewport.scrollAndZoomIntoView([frame]);
 
       figma.ui.postMessage({ type: "export-complete" });
-      const overlayNote =
-        hasOverlays
-          ? ` (with ${pins.length} pin${pins.length === 1 ? "" : "s"} + ${routes.length} route${routes.length === 1 ? "" : "s"})`
-          : "";
+      const overlayParts: string[] = [];
+      if (pins.length > 0) {
+        overlayParts.push(`${pins.length} pin${pins.length === 1 ? "" : "s"}`);
+      }
+      if (routes.length > 0) {
+        overlayParts.push(`${routes.length} route${routes.length === 1 ? "" : "s"}`);
+      }
+      if (gridLines.length > 0) overlayParts.push("grid");
+      const overlayNote = overlayParts.length > 0
+        ? ` (with ${overlayParts.join(" + ")})`
+        : "";
       const isTerrain = msg.styleLabel === "Terrain";
       const licenseNote = isTerrain
         ? "  ·  CC BY-SA 3.0 — credit OpenTopoMap & OSM if publishing"
