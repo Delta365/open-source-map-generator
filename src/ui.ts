@@ -1119,17 +1119,24 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
         fadeDuration: 0,
       });
 
-      // NOTE: deliberately do NOT add pin/route layers to the export map.
-      // The basemap is captured as raster; pins and routes are projected to
-      // screen pixels and rebuilt as native Figma nodes by the plugin so they
-      // remain editable after export.
-
       // Match the preview's projection (globe, auto-flattens to Mercator at
-      // zoom > ~12). Must be set after style.load. The graticule, if on, is
-      // NOT rasterised here — we project its lines below and ship them as
-      // vector polylines so they stay editable in the Figma export.
+      // zoom > ~12). Must be set after style.load.
+      //
+      // Two paths from here:
+      //   exportAsLayers=true  — basemap only on the export map; pins,
+      //     routes, and grid are projected later and rebuilt as native
+      //     Figma layers by the plugin.
+      //   exportAsLayers=false — add the overlay MapLibre layers so pins,
+      //     routes, and grid get rasterised into the basemap PNG. We then
+      //     ship empty overlay arrays so the plugin's simple-single-fill
+      //     path kicks in.
       exportMap.on("style.load", () => {
         exportMap.setProjection({ type: "globe" });
+        if (!exportAsLayers) {
+          if (graticuleVisible) ensureGraticuleLayers(exportMap);
+          ensureRoutesLayers(exportMap);
+          ensurePinsLayers(exportMap);
+        }
       });
 
       timeoutId = window.setTimeout(
@@ -1149,76 +1156,83 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
 
       exportMap.once("idle", () => {
         try {
-          // Project lng/lat → screen pixels in the export map's CSS-pixel
-          // coordinate space (which equals the Figma frame's pixel space).
-          // safeProject filters out points whose projection is bogus — the
-          // common cause is 3D pitch placing the point behind the camera.
+          // Per-overlay vector data is only built when the user opted into
+          // layered export. Otherwise the overlays are already part of the
+          // rasterised PNG (added to the export map in the style.load
+          // handler above), and we ship empty arrays.
           let skippedPins = 0;
-          const exportPins: ExportPin[] = [];
-          for (const pin of pins) {
-            const px = safeProject(exportMap, pin.lng, pin.lat);
-            if (!px) {
-              skippedPins++;
-              continue;
-            }
-            exportPins.push({
-              x: px.x,
-              y: px.y,
-              label: pin.label,
-              color: pin.color,
-            });
-          }
-
           let skippedRoutes = 0;
+          const exportPins: ExportPin[] = [];
           const exportRoutes: ExportRoute[] = [];
-          for (const r of routes) {
-            const points: { x: number; y: number }[] = [];
-            let routeOk = true;
-            for (const c of r.coordinates) {
-              const px = safeProject(exportMap, c[0], c[1]);
-              if (!px) {
-                routeOk = false;
-                break;
-              }
-              points.push(px);
-            }
-            if (!routeOk || points.length < 2) {
-              skippedRoutes++;
-              continue;
-            }
-            exportRoutes.push({
-              name: routeDisplayName(r),
-              color: r.color,
-              type: r.type,
-              points,
-            });
-          }
-
-          // Graticule lines — only included if the user has the Grid toggle
-          // on. Each line is split into visible sub-segments wherever it
-          // crosses behind the globe; behind-camera vertices fail
-          // safeProject's round-trip check and act as natural break points.
           const exportGridLines: ExportGridLine[] = [];
-          if (graticuleVisible) {
-            for (const feature of graticuleData.features) {
-              const name = formatGridLineName(
-                feature.properties.kind,
-                feature.properties.value,
-              );
-              let segment: { x: number; y: number }[] = [];
-              for (const c of feature.geometry.coordinates) {
-                const px = safeProject(exportMap, c[0], c[1]);
-                if (px) {
-                  segment.push(px);
-                } else if (segment.length > 0) {
-                  if (segment.length >= 2) {
-                    exportGridLines.push({ name, points: segment });
-                  }
-                  segment = [];
-                }
+
+          if (exportAsLayers) {
+            // Project lng/lat → screen pixels in the export map's CSS-pixel
+            // coordinate space (which equals the Figma frame's pixel space).
+            // safeProject filters out points whose projection is bogus —
+            // the common cause is 3D pitch placing the point behind the
+            // camera, or the far side of the globe at world view.
+            for (const pin of pins) {
+              const px = safeProject(exportMap, pin.lng, pin.lat);
+              if (!px) {
+                skippedPins++;
+                continue;
               }
-              if (segment.length >= 2) {
-                exportGridLines.push({ name, points: segment });
+              exportPins.push({
+                x: px.x,
+                y: px.y,
+                label: pin.label,
+                color: pin.color,
+              });
+            }
+
+            for (const r of routes) {
+              const points: { x: number; y: number }[] = [];
+              let routeOk = true;
+              for (const c of r.coordinates) {
+                const px = safeProject(exportMap, c[0], c[1]);
+                if (!px) {
+                  routeOk = false;
+                  break;
+                }
+                points.push(px);
+              }
+              if (!routeOk || points.length < 2) {
+                skippedRoutes++;
+                continue;
+              }
+              exportRoutes.push({
+                name: routeDisplayName(r),
+                color: r.color,
+                type: r.type,
+                points,
+              });
+            }
+
+            // Graticule lines — each one is split into visible sub-segments
+            // wherever it crosses behind the globe; behind-camera vertices
+            // fail safeProject's round-trip check and act as natural breaks.
+            if (graticuleVisible) {
+              for (const feature of graticuleData.features) {
+                const name = formatGridLineName(
+                  feature.properties.kind,
+                  feature.properties.value,
+                );
+                let segment: { x: number; y: number }[] = [];
+                for (const c of feature.geometry.coordinates) {
+                  const px = safeProject(exportMap, c[0], c[1]);
+                  if (px) {
+                    segment.push(px);
+                  } else if (segment.length > 0) {
+                    if (segment.length >= 2) {
+                      exportGridLines.push({ name, points: segment });
+                    }
+                    segment = [];
+                  }
+                }
+                if (segment.length >= 2) {
+                  exportGridLines.push({ name, points: segment });
+                }
               }
             }
           }
@@ -1463,6 +1477,10 @@ window.addEventListener("message", (event: MessageEvent) => {
     if (msg.graticuleVisible === true) {
       setGraticuleVisible(true, /* persist */ false);
     }
+    // Restore the user's "export as layers" preference.
+    if (msg.exportAsLayers === true) {
+      setExportAsLayers(true, /* persist */ false);
+    }
   } else if (msg.type === "export-complete") {
     showStatus("Done. Frame placed in Figma.");
     resetExportBtn();
@@ -1706,6 +1724,12 @@ function refreshRoutesSource(): void {
 
 let graticuleVisible = false;
 
+// Whether the next Export should produce native Figma layers (pins, routes,
+// grid as their own editable groups) or a single flat PNG. Default off so a
+// fresh install gets the more immediately-recognisable "drop the map into
+// a frame" behaviour. Persisted per device.
+let exportAsLayers = false;
+
 // Build the GeoJSON once at module init — the data is purely geometric and
 // doesn't depend on map state. Meridians get a dense vertex strip so they
 // curve smoothly when projected onto the globe.
@@ -1793,6 +1817,24 @@ function setGraticuleVisible(visible: boolean, persist = true): void {
 const graticuleToggle = $<HTMLInputElement>("#toggle-graticule");
 graticuleToggle.addEventListener("change", () => {
   setGraticuleVisible(graticuleToggle.checked);
+});
+
+// ---- Export-as-layers toggle ---------------------------------------------
+
+function setExportAsLayers(value: boolean, persist = true): void {
+  exportAsLayers = value;
+  exportLayersToggle.checked = value;
+  if (persist) {
+    parent.postMessage(
+      { pluginMessage: { type: "save-export-as-layers", value } },
+      "*",
+    );
+  }
+}
+
+const exportLayersToggle = $<HTMLInputElement>("#toggle-export-layers");
+exportLayersToggle.addEventListener("change", () => {
+  setExportAsLayers(exportLayersToggle.checked);
 });
 
 // ---- Reusable place autocomplete (per-input instance) ---------------------

@@ -1241,6 +1241,13 @@
       </div>
       <div class="spacer"></div>
       <div class="export-group">
+        <label class="toggle"
+               title="On: pins, routes, and grid become separate editable Figma layers. Off: everything renders into a single flat PNG.">
+          <span class="toggle-label">Layers</span>
+          <input id="toggle-export-layers" type="checkbox" class="toggle-input"
+                 aria-label="Export pins, routes, and grid as separate Figma layers" />
+          <span class="toggle-switch" aria-hidden="true"></span>
+        </label>
         <select id="format" aria-label="Image format">
           <option value="png" selected>PNG</option>
           <option value="jpeg">JPEG</option>

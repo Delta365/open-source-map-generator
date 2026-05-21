@@ -9,6 +9,7 @@ const RECENT_KEY = "map-generator:recent-searches";
 const ORS_KEY_KEY = "map-generator:ors-api-key";
 const FIRST_RUN_HINT_KEY = "map-generator:first-run-hint-shown";
 const GRATICULE_KEY = "map-generator:graticule-visible";
+const EXPORT_AS_LAYERS_KEY = "map-generator:export-as-layers";
 
 // Single fixed window size: the side panel slides over the map (overlay),
 // so we don't need to resize when it opens or closes.
@@ -76,6 +77,11 @@ interface SaveGraticuleMessage {
   visible: boolean;
 }
 
+interface SaveExportAsLayersMessage {
+  type: "save-export-as-layers";
+  value: boolean;
+}
+
 interface CloseMessage {
   type: "close";
 }
@@ -98,6 +104,7 @@ type PluginMessage =
   | SaveRoutingKeyMessage
   | SaveFirstRunHintMessage
   | SaveGraticuleMessage
+  | SaveExportAsLayersMessage
   | CloseMessage
   | ResizeMessage
   | OpenUrlMessage;
@@ -108,6 +115,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     let orsKey = "";
     let firstRunHintShown = false;
     let graticuleVisible = false;
+    let exportAsLayers = false;
     try {
       const stored = await figma.clientStorage.getAsync(RECENT_KEY);
       if (Array.isArray(stored)) {
@@ -134,12 +142,19 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     } catch {
       // Default to off if not readable.
     }
+    try {
+      const e = await figma.clientStorage.getAsync(EXPORT_AS_LAYERS_KEY);
+      exportAsLayers = e === true;
+    } catch {
+      // Default to off (flat PNG export) if not readable.
+    }
     figma.ui.postMessage({
       type: "init",
       recent,
       orsKey,
       firstRunHintShown,
       graticuleVisible,
+      exportAsLayers,
     });
     return;
   }
@@ -183,6 +198,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === "save-graticule") {
     try {
       await figma.clientStorage.setAsync(GRATICULE_KEY, msg.visible === true);
+    } catch {
+      // Worst case the toggle defaults back to off on next session.
+    }
+    return;
+  }
+
+  if (msg.type === "save-export-as-layers") {
+    try {
+      await figma.clientStorage.setAsync(EXPORT_AS_LAYERS_KEY, msg.value === true);
     } catch {
       // Worst case the toggle defaults back to off on next session.
     }
