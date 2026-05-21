@@ -418,6 +418,63 @@
       }
       .view-row .spacer { flex: 1; }
 
+      /* --- Switch-style toggle (for Grid, future on/off settings) --- */
+
+      .toggle {
+        display: inline-flex; align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .toggle-label {
+        font-weight: 500;
+        color: var(--text);
+      }
+      .toggle-input {
+        /* Hide the native checkbox visually but keep it accessible for
+           keyboard + screen readers. The .toggle-switch span next to it
+           shows the visual state. */
+        position: absolute;
+        opacity: 0;
+        width: 1px; height: 1px;
+        pointer-events: none;
+      }
+      .toggle-switch {
+        position: relative;
+        width: 28px; height: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        transition: background 120ms ease, border-color 120ms ease;
+        flex-shrink: 0;
+      }
+      .toggle-switch::after {
+        content: "";
+        position: absolute;
+        top: 1px; left: 1px;
+        width: 12px; height: 12px;
+        background: var(--text-secondary);
+        border-radius: 50%;
+        transition: transform 140ms cubic-bezier(0.2, 0.7, 0.2, 1),
+                    background 140ms ease;
+      }
+      .toggle-input:checked ~ .toggle-switch {
+        background: var(--brand);
+        border-color: var(--brand);
+      }
+      .toggle-input:checked ~ .toggle-switch::after {
+        transform: translateX(12px);
+        background: #ffffff;
+      }
+      .toggle-input:focus-visible ~ .toggle-switch {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+      }
+      .toggle:hover .toggle-switch { border-color: var(--text-secondary); }
+      .toggle:hover .toggle-input:checked ~ .toggle-switch {
+        border-color: var(--brand);
+      }
+
       /* --- Number stepper (− input +) --------------------------- */
 
       .stepper {
@@ -1166,8 +1223,12 @@
         </div>
       </label>
       <div class="spacer"></div>
-      <button id="toggle-graticule" class="btn" type="button" aria-pressed="false"
-              title="Show latitude / longitude grid">Grid</button>
+      <label class="toggle" title="Show latitude / longitude grid">
+        <span class="toggle-label">Grid</span>
+        <input id="toggle-graticule" type="checkbox" class="toggle-input"
+               aria-label="Show latitude / longitude grid" />
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
       <button id="reset-bearing" class="btn" type="button">Level</button>
     </div>
 

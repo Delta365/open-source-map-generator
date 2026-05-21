@@ -1778,8 +1778,10 @@ function setGraticuleVisible(visible: boolean, persist = true): void {
   graticuleVisible = visible;
   if (visible) ensureGraticuleLayers(map);
   else removeGraticuleLayers(map);
-  graticuleToggleBtn.classList.toggle("active", visible);
-  graticuleToggleBtn.setAttribute("aria-pressed", visible ? "true" : "false");
+  // Sync the checkbox state. If this was called by the user clicking the
+  // toggle the checkbox is already in the right state; setting it again is
+  // idempotent and matters for the persistence-restore path.
+  graticuleToggle.checked = visible;
   if (persist) {
     parent.postMessage(
       { pluginMessage: { type: "save-graticule", visible } },
@@ -1788,9 +1790,9 @@ function setGraticuleVisible(visible: boolean, persist = true): void {
   }
 }
 
-const graticuleToggleBtn = $<HTMLButtonElement>("#toggle-graticule");
-graticuleToggleBtn.addEventListener("click", () => {
-  setGraticuleVisible(!graticuleVisible);
+const graticuleToggle = $<HTMLInputElement>("#toggle-graticule");
+graticuleToggle.addEventListener("change", () => {
+  setGraticuleVisible(graticuleToggle.checked);
 });
 
 // ---- Reusable place autocomplete (per-input instance) ---------------------
