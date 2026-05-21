@@ -8,6 +8,7 @@
 const RECENT_KEY = "map-generator:recent-searches";
 const ORS_KEY_KEY = "map-generator:ors-api-key";
 const FIRST_RUN_HINT_KEY = "map-generator:first-run-hint-shown";
+const GRATICULE_KEY = "map-generator:graticule-visible";
 
 // Single fixed window size: the side panel slides over the map (overlay),
 // so we don't need to resize when it opens or closes.
@@ -63,6 +64,11 @@ interface SaveFirstRunHintMessage {
   type: "save-first-run-hint";
 }
 
+interface SaveGraticuleMessage {
+  type: "save-graticule";
+  visible: boolean;
+}
+
 interface CloseMessage {
   type: "close";
 }
@@ -84,6 +90,7 @@ type PluginMessage =
   | SaveRecentMessage
   | SaveRoutingKeyMessage
   | SaveFirstRunHintMessage
+  | SaveGraticuleMessage
   | CloseMessage
   | ResizeMessage
   | OpenUrlMessage;
@@ -93,6 +100,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     let recent: string[] = [];
     let orsKey = "";
     let firstRunHintShown = false;
+    let graticuleVisible = false;
     try {
       const stored = await figma.clientStorage.getAsync(RECENT_KEY);
       if (Array.isArray(stored)) {
@@ -113,11 +121,18 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     } catch {
       // Default to false (show the hint) if storage isn't readable.
     }
+    try {
+      const g = await figma.clientStorage.getAsync(GRATICULE_KEY);
+      graticuleVisible = g === true;
+    } catch {
+      // Default to off if not readable.
+    }
     figma.ui.postMessage({
       type: "init",
       recent,
       orsKey,
       firstRunHintShown,
+      graticuleVisible,
     });
     return;
   }
@@ -154,6 +169,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       await figma.clientStorage.setAsync(FIRST_RUN_HINT_KEY, true);
     } catch {
       // Worst case the hint shows again next session; not a real problem.
+    }
+    return;
+  }
+
+  if (msg.type === "save-graticule") {
+    try {
+      await figma.clientStorage.setAsync(GRATICULE_KEY, msg.visible === true);
+    } catch {
+      // Worst case the toggle defaults back to off on next session.
     }
     return;
   }

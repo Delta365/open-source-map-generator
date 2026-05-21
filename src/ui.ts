@@ -153,6 +153,10 @@ const PINS_LABEL_LAYER = "user-pins-label";
 const ROUTES_SOURCE = "user-routes";
 const ROUTES_LINE_LAYER = "user-routes-line";
 
+const GRATICULE_SOURCE = "user-graticule";
+const GRATICULE_LAYER = "user-graticule-line";
+const GRATICULE_SPACING_DEG = 10;
+
 // OpenRouteService directions endpoint base. The mode (driving-car,
 // cycling-regular, foot-walking) is appended at call time. Requires a free
 // API key supplied by each user (set in the Routes tab). HeiGIT-operated.
@@ -288,6 +292,8 @@ map.addControl(
 // render as a sphere.
 map.on("style.load", () => {
   map.setProjection({ type: "globe" });
+  // Order matters: graticule first (lowest), then routes, then pins on top.
+  if (graticuleVisible) ensureGraticuleLayers(map);
   ensureRoutesLayers(map);
   ensurePinsLayers(map);
 });
@@ -1100,9 +1106,12 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
       // remain editable after export.
 
       // Match the preview's projection (globe, auto-flattens to Mercator at
-      // zoom > ~12). Must be set after style.load.
+      // zoom > ~12). Must be set after style.load. The graticule, if on,
+      // is rasterised into the basemap (not vectorised), so it just becomes
+      // part of the captured PNG.
       exportMap.on("style.load", () => {
         exportMap.setProjection({ type: "globe" });
+        if (graticuleVisible) ensureGraticuleLayers(exportMap);
       });
 
       timeoutId = window.setTimeout(
@@ -1401,6 +1410,10 @@ window.addEventListener("message", (event: MessageEvent) => {
         if (firstRunHint.hidden) firstRunHint.hidden = false;
       }, 700);
     }
+    // Restore the user's last graticule preference.
+    if (msg.graticuleVisible === true) {
+      setGraticuleVisible(true, /* persist */ false);
+    }
   } else if (msg.type === "export-complete") {
     showStatus("Done. Frame placed in Figma.");
     resetExportBtn();
@@ -1639,6 +1652,97 @@ function refreshRoutesSource(): void {
   const src = map.getSource(ROUTES_SOURCE) as any;
   if (src) src.setData(routesGeoJSON());
 }
+
+// ---- Latitude / longitude graticule --------------------------------------
+
+let graticuleVisible = false;
+
+// Build the GeoJSON once at module init — the data is purely geometric and
+// doesn't depend on map state. Meridians get a dense vertex strip so they
+// curve smoothly when projected onto the globe.
+const graticuleData = (() => {
+  const features: Array<{
+    type: "Feature";
+    properties: { kind: "meridian" | "parallel"; value: number };
+    geometry: { type: "LineString"; coordinates: [number, number][] };
+  }> = [];
+  for (let lng = -180; lng <= 180; lng += GRATICULE_SPACING_DEG) {
+    const coords: [number, number][] = [];
+    for (let lat = -85; lat <= 85; lat += 2) coords.push([lng, lat]);
+    features.push({
+      type: "Feature",
+      properties: { kind: "meridian", value: lng },
+      geometry: { type: "LineString", coordinates: coords },
+    });
+  }
+  for (let lat = -80; lat <= 80; lat += GRATICULE_SPACING_DEG) {
+    const coords: [number, number][] = [];
+    for (let lng = -180; lng <= 180; lng += 5) coords.push([lng, lat]);
+    features.push({
+      type: "Feature",
+      properties: { kind: "parallel", value: lat },
+      geometry: { type: "LineString", coordinates: coords },
+    });
+  }
+  return { type: "FeatureCollection" as const, features };
+})();
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ensureGraticuleLayers(target: any): void {
+  if (!target.getSource(GRATICULE_SOURCE)) {
+    target.addSource(GRATICULE_SOURCE, { type: "geojson", data: graticuleData });
+  }
+  if (!target.getLayer(GRATICULE_LAYER)) {
+    // Insert below any existing overlays so the grid sits underneath
+    // routes and pins. If neither exists yet, the layer goes on top of
+    // the basemap (which is also what we want).
+    const beforeId =
+      target.getLayer(`${ROUTES_LINE_LAYER}-halo`)
+        ? `${ROUTES_LINE_LAYER}-halo`
+        : target.getLayer(PINS_CIRCLE_LAYER)
+          ? PINS_CIRCLE_LAYER
+          : undefined;
+    target.addLayer(
+      {
+        id: GRATICULE_LAYER,
+        type: "line",
+        source: GRATICULE_SOURCE,
+        paint: {
+          "line-color": "#7a7a7a",
+          "line-width": 0.6,
+          "line-opacity": 0.55,
+          "line-dasharray": [3, 3],
+        },
+      },
+      beforeId,
+    );
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function removeGraticuleLayers(target: any): void {
+  if (target.getLayer(GRATICULE_LAYER)) target.removeLayer(GRATICULE_LAYER);
+  if (target.getSource(GRATICULE_SOURCE)) target.removeSource(GRATICULE_SOURCE);
+}
+
+function setGraticuleVisible(visible: boolean, persist = true): void {
+  graticuleVisible = visible;
+  if (visible) ensureGraticuleLayers(map);
+  else removeGraticuleLayers(map);
+  graticuleToggleBtn.classList.toggle("active", visible);
+  graticuleToggleBtn.setAttribute("aria-pressed", visible ? "true" : "false");
+  if (persist) {
+    parent.postMessage(
+      { pluginMessage: { type: "save-graticule", visible } },
+      "*",
+    );
+  }
+}
+
+const graticuleToggleBtn = $<HTMLButtonElement>("#toggle-graticule");
+graticuleToggleBtn.addEventListener("click", () => {
+  setGraticuleVisible(!graticuleVisible);
+});
 
 // ---- Reusable place autocomplete (per-input instance) ---------------------
 
