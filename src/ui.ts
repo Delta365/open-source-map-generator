@@ -283,7 +283,11 @@ map.addControl(
 
 // Re-add overlay layers whenever the style finishes loading (setStyle wipes
 // them). Routes go on first so pins draw on top of route lines.
+// Also enable globe projection — MapLibre 5 auto-flattens to Mercator at
+// zoom > ~12, so city-level work is unaffected while world-level views
+// render as a sphere.
 map.on("style.load", () => {
+  map.setProjection({ type: "globe" });
   ensureRoutesLayers(map);
   ensurePinsLayers(map);
 });
@@ -1094,6 +1098,12 @@ function renderHighRes(p: RenderParams): Promise<ExportData> {
       // The basemap is captured as raster; pins and routes are projected to
       // screen pixels and rebuilt as native Figma nodes by the plugin so they
       // remain editable after export.
+
+      // Match the preview's projection (globe, auto-flattens to Mercator at
+      // zoom > ~12). Must be set after style.load.
+      exportMap.on("style.load", () => {
+        exportMap.setProjection({ type: "globe" });
+      });
 
       timeoutId = window.setTimeout(
         () =>
