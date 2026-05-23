@@ -27,6 +27,29 @@
 
       * { box-sizing: border-box; }
 
+      /* --- Phosphor-style icons -------------------------------------- */
+      .ic {
+        display: inline-block;
+        flex-shrink: 0;
+        color: currentColor;
+        vertical-align: middle;
+      }
+      .ic-12 { width: 12px; height: 12px; }
+      .ic-14 { width: 14px; height: 14px; }
+      .ic-16 { width: 16px; height: 16px; }
+      .ic-20 { width: 20px; height: 20px; }
+      .ic-24 { width: 24px; height: 24px; }
+
+      /* Small dot used as a separator between control groups (• style). */
+      .dot-sep {
+        display: inline-block;
+        width: 4px; height: 4px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        opacity: 0.6;
+        flex-shrink: 0;
+      }
+
       html, body {
         margin: 0; padding: 0; height: 100%;
         background: var(--bg); color: var(--text);
@@ -100,11 +123,14 @@
         background: var(--brand);
         color: var(--on-brand);
         font: inherit; font-weight: 600;
-        padding: 7px 16px;
-        border-radius: 6px;
+        padding: 9px 14px;
+        border-radius: 8px;
         cursor: pointer;
         transition: background 120ms ease;
-        min-width: 100px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
       }
       .btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
       .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -117,6 +143,40 @@
         font-weight: 500;
       }
       label.field input { color: var(--text); font-weight: 400; }
+      .field-ic { color: var(--text-secondary); }
+
+      /* --- Icon-style toggle (Phosphor toggle-left / toggle-right) ----- */
+      .icon-toggle {
+        display: inline-flex; align-items: center;
+        gap: 6px;
+        padding: 2px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .icon-toggle-input {
+        position: absolute;
+        opacity: 0;
+        width: 1px; height: 1px;
+        pointer-events: none;
+      }
+      .icon-toggle-off { color: var(--text-secondary); display: inline-block; }
+      .icon-toggle-on  { color: var(--brand); display: none; }
+      .icon-toggle-input:checked ~ .icon-toggle-off { display: none; }
+      .icon-toggle-input:checked ~ .icon-toggle-on  { display: inline-block; }
+      .icon-toggle-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+      .icon-toggle-input:focus-visible ~ .icon-toggle-off,
+      .icon-toggle-input:focus-visible ~ .icon-toggle-on {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+        border-radius: 12px;
+      }
+      .icon-toggle:hover .icon-toggle-label { color: var(--text); }
+
+      /* Size group's × separator icon between W and H */
+      .size-x { color: var(--text-secondary); }
 
       /* --- Layout chrome --------------------------------------------- */
 
@@ -138,6 +198,27 @@
         z-index: 30;
       }
       .search-row .search-input { flex: 1; }
+      /* Search field with an inline magnifying-glass icon. */
+      .search-field {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+      }
+      .search-field-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        pointer-events: none;
+      }
+      .search-field input {
+        width: 100%;
+        padding: 8px 10px 8px 32px;  /* extra left padding for the icon */
+      }
+      .header-icon-lg {
+        width: 32px; height: 32px;
+      }
       .recent-pop {
         position: absolute; top: calc(100% - 1px); left: 12px; right: 56px;
         background: var(--bg);
@@ -353,11 +434,14 @@
         appearance: none; border: 0;
         background: rgba(255,255,255,0.92); color: #1e1e1e;
         font: inherit; font-weight: 500;
-        padding: 5px 10px;
-        border-radius: 16px;
+        padding: 6px 12px;
+        border-radius: 999px;
         cursor: pointer;
         box-shadow: 0 1px 3px rgba(0,0,0,0.18);
         backdrop-filter: blur(6px);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
       .map-pill:hover { background: #ffffff; }
       .map-pill.active {
@@ -495,7 +579,7 @@
         border-radius: 0;
         padding: 4px 4px;
         text-align: center;
-        width: 44px;
+        width: 56px;          /* wider field for the 104px stepper */
       }
       .stepper input[type="number"]:focus {
         background: transparent;          /* parent stepper handles focus look */
@@ -910,15 +994,17 @@
       .resources-link {
         appearance: none; border: 0; background: transparent;
         color: var(--brand);
-        font: inherit; font-weight: 600;
-        padding: 4px 6px;
-        margin-left: -6px;          /* keep visual edge aligned with padding */
+        font: inherit; font-weight: 500;
+        padding: 6px 4px;
+        margin-left: -4px;          /* keep visual edge aligned with padding */
         border-radius: 4px;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
       .resources-link:hover {
         background: var(--bg-hover);
-        text-decoration: underline;
       }
 
       .modal-backdrop {
@@ -1004,10 +1090,82 @@
   </head>
 
   <body>
+    <!-- Phosphor-inspired icon sprite. One <use href="#ic-..."> per icon. -->
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+         style="position:absolute;width:0;height:0;overflow:hidden;">
+      <defs>
+        <symbol id="ic-info" viewBox="0 0 256 256">
+          <circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-width="16"/>
+          <polyline points="120,120 128,120 128,172 136,172" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="126" cy="84" r="10" fill="currentColor"/>
+        </symbol>
+        <symbol id="ic-caret-down" viewBox="0 0 256 256">
+          <polyline points="208,96 128,176 48,96" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="ic-magnifying-glass" viewBox="0 0 256 256">
+          <circle cx="112" cy="112" r="80" fill="none" stroke="currentColor" stroke-width="16"/>
+          <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-magnifying-glass-plus" viewBox="0 0 256 256">
+          <circle cx="112" cy="112" r="80" fill="none" stroke="currentColor" stroke-width="16"/>
+          <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+          <line x1="80" y1="112" x2="144" y2="112" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+          <line x1="112" y1="80" x2="112" y2="144" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-square-half" viewBox="0 0 256 256">
+          <rect x="40" y="40" width="176" height="176" rx="12" fill="none" stroke="currentColor" stroke-width="16"/>
+          <path d="M128 40 L208 40 Q216 40 216 48 L216 208 Q216 216 208 216 L128 216 Z" fill="currentColor"/>
+        </symbol>
+        <symbol id="ic-arrow-counter-clockwise" viewBox="0 0 256 256">
+          <polyline points="80,136 80,80 24,80" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M80,80 a 88 88 0 1 1 -16 100" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="ic-arrows-clockwise" viewBox="0 0 256 256">
+          <polyline points="176,40 224,40 224,88" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M67.7 89.3a96 96 0 0 1 156.3 -1.3" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="80,216 32,216 32,168" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M188.3 166.7a96 96 0 0 1 -156.3 1.3" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="ic-cube-focus" viewBox="0 0 256 256">
+          <polyline points="56,40 40,40 40,56" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="216,56 216,40 200,40" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="200,216 216,216 216,200" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="40,200 40,216 56,216" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M128,80L80,108v56l48,28l48-28v-56L128,80Z" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="128" y1="80" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+          <line x1="80" y1="108" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+          <line x1="176" y1="108" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-minus" viewBox="0 0 256 256">
+          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-plus" viewBox="0 0 256 256">
+          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+          <line x1="128" y1="40" x2="128" y2="216" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-x" viewBox="0 0 256 256">
+          <line x1="64" y1="64" x2="192" y2="192" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+          <line x1="192" y1="64" x2="64" y2="192" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-arrow-right" viewBox="0 0 256 256">
+          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+          <polyline points="144,56 216,128 144,200" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+        <symbol id="ic-toggle-left" viewBox="0 0 256 256">
+          <rect x="16" y="64" width="224" height="128" rx="64" fill="none" stroke="currentColor" stroke-width="16"/>
+          <circle cx="80" cy="128" r="36" fill="currentColor"/>
+        </symbol>
+        <symbol id="ic-toggle-right" viewBox="0 0 256 256">
+          <rect x="16" y="64" width="224" height="128" rx="64" fill="currentColor"/>
+          <circle cx="176" cy="128" r="36" fill="#ffffff"/>
+        </symbol>
+      </defs>
+    </svg>
     <header class="header">
       <button id="about-btn" class="resources-link" type="button"
               title="View credits, licences and source on GitHub">
-        Resources
+        <svg class="ic ic-16" aria-hidden="true"><use href="#ic-info"/></svg>
+        <span>Resources</span>
       </button>
       <label class="field">
         Style
@@ -1016,25 +1174,22 @@
     </header>
 
     <div class="search-row">
-      <input
-        id="search"
-        class="search-input"
-        type="search"
-        placeholder="Search a place or paste lat,lng (e.g. 35.68,139.69)"
-        autocomplete="off"
-        spellcheck="false"
-      />
+      <div class="search-field">
+        <svg class="ic ic-16 search-field-icon" aria-hidden="true"><use href="#ic-magnifying-glass"/></svg>
+        <input
+          id="search"
+          class="search-input"
+          type="search"
+          placeholder="Search a place or paste latitude, longitude (e.g. 35.68,139.69)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
       <button id="search-btn" class="btn" type="button">Search</button>
-      <button id="panel-toggle" class="header-icon" type="button"
+      <button id="panel-toggle" class="header-icon header-icon-lg" type="button"
               title="Show side panel" aria-label="Toggle side panel"
               aria-expanded="false">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-             aria-hidden="true">
-          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-          <line x1="15" y1="3" x2="15" y2="21"></line>
-        </svg>
+        <svg class="ic ic-20" aria-hidden="true"><use href="#ic-square-half"/></svg>
       </button>
       <div id="recent-pop" class="recent-pop" role="listbox"></div>
 
@@ -1058,7 +1213,8 @@
 
           <div class="map-tl">
             <button id="reset-view" class="map-pill" type="button" title="Reset bearing &amp; pitch">
-              <span aria-hidden="true">↺</span> Reset
+              <svg class="ic ic-16" aria-hidden="true"><use href="#ic-arrow-counter-clockwise"/></svg>
+              <span>Reset</span>
             </button>
           </div>
 
@@ -1197,38 +1353,55 @@
 
     <div class="view-row">
       <label class="field">
-        Bearing
+        <svg class="ic ic-16 field-ic" aria-hidden="true"><use href="#ic-arrows-clockwise"/></svg>
+        <span>Bearing</span>
         <div class="stepper">
-          <button class="stepper-btn" type="button" data-target="bearing" data-step="-1" aria-label="Decrease bearing">−</button>
+          <button class="stepper-btn" type="button" data-target="bearing" data-step="-1" aria-label="Decrease bearing">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+          </button>
           <input id="bearing" type="number" min="-180" max="180" step="1" value="0" />
-          <button class="stepper-btn" type="button" data-target="bearing" data-step="1" aria-label="Increase bearing">+</button>
+          <button class="stepper-btn" type="button" data-target="bearing" data-step="1" aria-label="Increase bearing">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+          </button>
         </div>
-        °
       </label>
+      <span class="dot-sep" aria-hidden="true"></span>
       <label class="field">
-        Pitch
+        <svg class="ic ic-16 field-ic" aria-hidden="true"><use href="#ic-cube-focus"/></svg>
+        <span>Pitch</span>
         <div class="stepper">
-          <button class="stepper-btn" type="button" data-target="pitch" data-step="-1" aria-label="Decrease pitch">−</button>
+          <button class="stepper-btn" type="button" data-target="pitch" data-step="-1" aria-label="Decrease pitch">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+          </button>
           <input id="pitch" type="number" min="0" max="60" step="1" value="0" />
-          <button class="stepper-btn" type="button" data-target="pitch" data-step="1" aria-label="Increase pitch">+</button>
+          <button class="stepper-btn" type="button" data-target="pitch" data-step="1" aria-label="Increase pitch">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+          </button>
         </div>
-        °
       </label>
+      <span class="dot-sep" aria-hidden="true"></span>
       <label class="field">
-        Zoom
+        <svg class="ic ic-16 field-ic" aria-hidden="true"><use href="#ic-magnifying-glass-plus"/></svg>
+        <span>Zoom</span>
         <div class="stepper">
-          <button class="stepper-btn" type="button" data-target="zoom" data-step="-1" aria-label="Zoom out">−</button>
+          <button class="stepper-btn" type="button" data-target="zoom" data-step="-1" aria-label="Zoom out">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+          </button>
           <input id="zoom" type="number" min="0" max="22" step="0.1" value="1.4" />
-          <button class="stepper-btn" type="button" data-target="zoom" data-step="1" aria-label="Zoom in">+</button>
+          <button class="stepper-btn" type="button" data-target="zoom" data-step="1" aria-label="Zoom in">
+            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+          </button>
         </div>
       </label>
       <div class="spacer"></div>
-      <label class="toggle" title="Show latitude / longitude grid">
-        <span class="toggle-label">Grid</span>
-        <input id="toggle-graticule" type="checkbox" class="toggle-input"
+      <label class="icon-toggle" title="Show latitude / longitude grid">
+        <input id="toggle-graticule" type="checkbox" class="icon-toggle-input"
                aria-label="Show latitude / longitude grid" />
-        <span class="toggle-switch" aria-hidden="true"></span>
+        <svg class="ic ic-24 icon-toggle-off" aria-hidden="true"><use href="#ic-toggle-left"/></svg>
+        <svg class="ic ic-24 icon-toggle-on" aria-hidden="true"><use href="#ic-toggle-right"/></svg>
+        <span class="icon-toggle-label">Grid</span>
       </label>
+      <span class="dot-sep" aria-hidden="true"></span>
       <button id="reset-bearing" class="btn" type="button">Level</button>
     </div>
 
@@ -1236,17 +1409,18 @@
       <div class="size-group">
         <select id="size-preset" aria-label="Frame size preset"></select>
         <input id="size-w" type="number" min="64" max="8192" step="1" value="1920" aria-label="Frame width" />
-        <span style="color: var(--text-secondary)">×</span>
+        <svg class="ic ic-12 size-x" aria-hidden="true"><use href="#ic-x"/></svg>
         <input id="size-h" type="number" min="64" max="8192" step="1" value="1080" aria-label="Frame height" />
       </div>
       <div class="spacer"></div>
       <div class="export-group">
-        <label class="toggle"
+        <label class="icon-toggle"
                title="On: pins, routes, and grid become separate editable Figma layers. Off: everything renders into a single flat PNG.">
-          <span class="toggle-label">Layers</span>
-          <input id="toggle-export-layers" type="checkbox" class="toggle-input"
+          <input id="toggle-export-layers" type="checkbox" class="icon-toggle-input"
                  aria-label="Export pins, routes, and grid as separate Figma layers" />
-          <span class="toggle-switch" aria-hidden="true"></span>
+          <svg class="ic ic-24 icon-toggle-off" aria-hidden="true"><use href="#ic-toggle-left"/></svg>
+          <svg class="ic ic-24 icon-toggle-on" aria-hidden="true"><use href="#ic-toggle-right"/></svg>
+          <span class="icon-toggle-label">Layers</span>
         </label>
         <select id="format" aria-label="Image format">
           <option value="png" selected>PNG</option>
@@ -1257,7 +1431,10 @@
           <option value="2" selected>2×</option>
           <option value="3">3×</option>
         </select>
-        <button id="export" class="btn-primary" type="button">Export</button>
+        <button id="export" class="btn-primary" type="button">
+          <span>Export</span>
+          <svg class="ic ic-16" aria-hidden="true"><use href="#ic-arrow-right"/></svg>
+        </button>
       </div>
     </footer>
 
