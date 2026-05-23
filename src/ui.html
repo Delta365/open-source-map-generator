@@ -34,10 +34,9 @@
         color: currentColor;
         vertical-align: middle;
       }
-      .ic-12 { width: 12px; height: 12px; }
-      .ic-14 { width: 14px; height: 14px; }
+      /* Only two icon sizes per the plugin rule: 16 with adjacent text,
+         24 when the icon is the entire touch target with no label. */
       .ic-16 { width: 16px; height: 16px; }
-      .ic-20 { width: 20px; height: 20px; }
       .ic-24 { width: 24px; height: 24px; }
 
       /* Small dot used as a separator between control groups (• style). */
@@ -55,7 +54,7 @@
         background: var(--bg); color: var(--text);
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
           Roboto, "Helvetica Neue", Arial, sans-serif;
-        font-size: 11px; line-height: 1.4; overflow: hidden;
+        font-size: 12px; line-height: 16px; overflow: hidden;
       }
 
       body { display: flex; flex-direction: column; }
@@ -70,7 +69,7 @@
         border-radius: 6px;
         color: var(--text);
         font: inherit;
-        padding: 5px 8px;
+        padding: 6px 8px;
         outline: none;
         transition: border-color 120ms ease, background 120ms ease;
         min-width: 0;
@@ -104,7 +103,7 @@
         background: var(--bg);
         color: var(--text);
         font: inherit; font-weight: 500;
-        padding: 5px 10px;
+        padding: 6px 10px;
         border-radius: 6px;
         cursor: pointer;
         white-space: nowrap;
@@ -122,8 +121,8 @@
         border: 0;
         background: var(--brand);
         color: var(--on-brand);
-        font: inherit; font-weight: 600;
-        padding: 9px 14px;
+        font: inherit; font-weight: 500;
+        padding: 10px 14px;
         border-radius: 8px;
         cursor: pointer;
         transition: background 120ms ease;
@@ -185,7 +184,7 @@
         gap: 12px; padding: 10px 12px;
         border-bottom: 1px solid var(--border); flex-shrink: 0;
       }
-      .title { font-weight: 600; font-size: 12px; letter-spacing: 0.01em; }
+      .title { font-weight: 500; font-size: 12px; letter-spacing: 0.01em; }
       .header select { min-width: 180px; }
 
       .search-row {
@@ -206,7 +205,7 @@
       }
       .search-field-icon {
         position: absolute;
-        left: 10px;
+        left: 12px;
         top: 50%;
         transform: translateY(-50%);
         color: var(--text-secondary);
@@ -214,10 +213,15 @@
       }
       .search-field input {
         width: 100%;
-        padding: 8px 10px 8px 32px;  /* extra left padding for the icon */
+        padding: 10px 12px 10px 36px;  /* matches the search-row's 36px target height */
       }
-      .header-icon-lg {
-        width: 32px; height: 32px;
+      /* Search button + panel toggle in the search row should match the
+         search field's height (~36px) for clean alignment. The
+         double-class selector outranks the later-defined .header-icon
+         base rule that would otherwise force back to 24x24. */
+      .search-row .btn { padding: 10px 14px; }
+      .header-icon.header-icon-lg {
+        width: 36px; height: 36px;
       }
       .recent-pop {
         position: absolute; top: calc(100% - 1px); left: 12px; right: 56px;
@@ -259,8 +263,8 @@
       }
       .dropdown-header {
         padding: 6px 10px 4px;
-        font-size: 9px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 500;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: var(--text-secondary);
@@ -303,14 +307,14 @@
         transform: rotate(45deg);
       }
       .first-run-hint .hint-title {
-        font-weight: 600;
+        font-weight: 500;
         font-size: 12px;
         margin-bottom: 4px;
         color: var(--text);
       }
       .first-run-hint .hint-body {
-        font-size: 11px;
-        line-height: 1.5;
+        font-size: 12px;
+        line-height: 16px;
         color: var(--text-secondary);
         margin-bottom: 10px;
       }
@@ -319,10 +323,10 @@
         border: 0;
         background: var(--brand);
         color: var(--on-brand);
-        padding: 5px 12px;
+        padding: 6px 12px;
         border-radius: 4px;
         font: inherit;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
       }
       .first-run-hint .hint-dismiss:hover { background: var(--brand-hover); }
@@ -408,13 +412,13 @@
 
       .panel-placeholder {
         color: var(--text-secondary);
-        font-size: 11px;
-        line-height: 1.55;
+        font-size: 12px;
+        line-height: 16px;
         margin: 0;
       }
       .panel-placeholder strong {
         color: var(--text);
-        font-weight: 600;
+        font-weight: 500;
       }
 
       /* When collapsed, hide the tabs and content; toggle stays visible. */
@@ -435,7 +439,7 @@
         background: rgba(255,255,255,0.92); color: #1e1e1e;
         font: inherit; font-weight: 500;
         padding: 6px 12px;
-        border-radius: 999px;
+        border-radius: 1000px;
         cursor: pointer;
         box-shadow: 0 1px 3px rgba(0,0,0,0.18);
         backdrop-filter: blur(6px);
@@ -466,7 +470,7 @@
       .ratio-badge {
         position: absolute; right: 8px; bottom: 8px;
         padding: 4px 8px;
-        font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+        font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
         background: rgba(0,0,0,0.6); color: #fff;
         border-radius: 4px;
         pointer-events: none;
@@ -476,8 +480,8 @@
       .status-chip {
         position: absolute; left: 8px; bottom: 36px;
         /* sits above the MapLibre attribution chip in the bottom-left */
-        padding: 5px 10px;
-        font-size: 11px;
+        padding: 6px 10px;
+        font-size: 12px;
         background: rgba(0,0,0,0.7); color: #fff;
         border-radius: 4px;
         max-width: 60%;
@@ -493,11 +497,13 @@
       /* Pin-drop cursor when mode is on */
       .pin-mode #map { cursor: crosshair; }
 
-      /* View row (bearing / pitch / zoom) — extra gap so the three steppers
-         feel like distinct controls instead of one undifferentiated strip. */
+      /* View row (bearing / pitch / zoom). The dot separators between
+         control groups carry the visual separation, so the flex gap can
+         be tight — otherwise the right-side Grid + Level pair gets pushed
+         out of the 760px window. */
       .view-row {
-        display: flex; align-items: center; gap: 20px;
-        padding: 10px 14px;
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px;
         border-top: 1px solid var(--border); flex-shrink: 0;
       }
       .view-row .spacer { flex: 1; }
@@ -579,7 +585,7 @@
         border-radius: 0;
         padding: 4px 4px;
         text-align: center;
-        width: 56px;          /* wider field for the 104px stepper */
+        width: 44px;
       }
       .stepper input[type="number"]:focus {
         background: transparent;          /* parent stepper handles focus look */
@@ -590,8 +596,7 @@
         background: transparent;
         color: var(--text-secondary);
         cursor: pointer;
-        width: 22px;
-        font: inherit; font-size: 14px; line-height: 1;
+        width: 24px;                /* 16px icon + 4px padding each side */
         padding: 0;
         display: inline-flex; align-items: center; justify-content: center;
         user-select: none;
@@ -613,7 +618,7 @@
       .pin-meta-count {
         margin-left: auto;
         color: var(--text-secondary);
-        font-size: 11px;
+        font-size: 12px;
         white-space: nowrap;
       }
 
@@ -626,10 +631,10 @@
         display: none;
         margin: 4px 0 0;
         color: var(--text-secondary);
-        font-size: 11px;
-        line-height: 1.55;
+        font-size: 12px;
+        line-height: 16px;
       }
-      .pin-empty strong { color: var(--text); font-weight: 600; }
+      .pin-empty strong { color: var(--text); font-weight: 500; }
 
       .pin-item {
         display: flex; align-items: center; gap: 8px;
@@ -650,7 +655,7 @@
       .pin-item .pin-meta {
         flex: 1; min-width: 0;
         display: flex; flex-direction: column;
-        gap: 1px;
+        gap: 2px;
       }
       .pin-item .name {
         outline: none;
@@ -666,17 +671,17 @@
       }
       .pin-item .coords {
         color: var(--text-secondary);
-        font-size: 10px;
+        font-size: 12px;
         font-variant-numeric: tabular-nums;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
       .pin-item .remove {
         appearance: none; border: 0; background: transparent;
         cursor: pointer; color: var(--text-secondary);
-        width: 22px; height: 22px;
-        font-size: 14px; line-height: 1;
+        width: 24px; height: 24px;   /* 16px icon + 4px padding each side */
         border-radius: 4px;
         flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
       }
       .pin-item .remove:hover {
         background: var(--bg-tertiary); color: var(--text);
@@ -713,8 +718,8 @@
         color: var(--text-secondary);
         cursor: pointer;
         width: 18px; height: 18px;
-        border-radius: 3px;
-        font-size: 13px; line-height: 1;
+        border-radius: 4px;
+        font-size: 12px; line-height: 1;
         padding: 0;
         display: inline-flex; align-items: center; justify-content: center;
       }
@@ -743,7 +748,7 @@
         margin-top: 4px;
       }
       .route-label {
-        font-size: 9px; font-weight: 600;
+        font-size: 12px; font-weight: 500;
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -790,7 +795,7 @@
       .route-count {
         margin-left: auto;
         color: var(--text-secondary);
-        font-size: 11px;
+        font-size: 12px;
         white-space: nowrap;
       }
 
@@ -808,14 +813,14 @@
       }
       .route-item:hover { background: var(--bg-hover); }
       .route-item .stripe {
-        width: 3px;
+        width: 4px;
         border-radius: 2px;
         flex-shrink: 0;
       }
       .route-item .meta {
         flex: 1; min-width: 0;
         display: flex; flex-direction: column;
-        gap: 1px;
+        gap: 2px;
         align-self: center;
       }
       .route-item .label {
@@ -824,16 +829,16 @@
       }
       .route-item .sub {
         color: var(--text-secondary);
-        font-size: 10px;
+        font-size: 12px;
       }
       .route-item .remove {
         appearance: none; border: 0; background: transparent;
         cursor: pointer; color: var(--text-secondary);
-        width: 22px; height: 22px;
-        font-size: 14px; line-height: 1;
+        width: 24px; height: 24px;   /* 16px icon + 4px padding each side */
         border-radius: 4px;
         flex-shrink: 0;
         align-self: center;
+        display: inline-flex; align-items: center; justify-content: center;
       }
       .route-item .remove:hover {
         background: var(--bg-tertiary); color: var(--text);
@@ -873,9 +878,9 @@
       }
       .api-key-help {
         margin: 2px 0 0;
-        font-size: 10px;
+        font-size: 12px;
         color: var(--text-secondary);
-        line-height: 1.55;
+        line-height: 16px;
       }
       .api-key-help a {
         color: var(--brand);
@@ -890,17 +895,17 @@
       .api-key-help ol li { margin-bottom: 2px; }
 
       .api-key-saved-msg {
-        font-size: 11px; color: var(--text);
+        font-size: 12px; color: var(--text);
         font-weight: 500;
         display: flex; align-items: center; gap: 8px;
         flex-wrap: wrap;
       }
       .api-key-saved-msg code {
         font-family: ui-monospace, "SF Mono", "Monaco", "Consolas", monospace;
-        font-size: 10px;
+        font-size: 12px;
         background: var(--bg-secondary);
         padding: 1px 5px;
-        border-radius: 3px;
+        border-radius: 4px;
         color: var(--text-secondary);
         font-weight: 400;
       }
@@ -946,7 +951,7 @@
 
       .spinner {
         display: inline-block;
-        width: 11px; height: 11px;
+        width: 12px; height: 12px;
         border: 2px solid currentColor;
         border-right-color: transparent;
         border-radius: 50%;
@@ -962,7 +967,7 @@
       .maplibregl-ctrl-attrib.maplibregl-compact {
         background-color: #ffffff !important;
         color: #000000 !important;
-        font-size: 10px !important;
+        font-size: 12px !important;
       }
       .maplibregl-ctrl-attrib a,
       .maplibregl-ctrl-attrib a:visited,
@@ -1035,23 +1040,22 @@
       }
       .modal-header h2 {
         margin: 0;
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 500;
       }
       .modal-close {
         appearance: none; border: 0; background: transparent;
-        width: 24px; height: 24px;
+        width: 32px; height: 32px;   /* 24px icon + 4px padding each side */
         border-radius: 4px;
         cursor: pointer;
-        font-size: 18px;
-        line-height: 1;
         color: var(--text-secondary);
+        display: inline-flex; align-items: center; justify-content: center;
       }
       .modal-close:hover { background: var(--bg-hover); color: var(--text); }
       .modal-body {
         padding: 14px 16px 16px;
         overflow-y: auto;
-        font-size: 11px;
+        font-size: 12px;
       }
       .modal-body p {
         margin: 0 0 10px;
@@ -1060,7 +1064,7 @@
       .modal-body p.foot {
         margin-top: 10px;
         color: var(--text-secondary);
-        font-size: 10px;
+        font-size: 12px;
       }
       .credits {
         margin: 0;
@@ -1073,7 +1077,7 @@
       }
       .credits li:first-child { border-top: 0; padding-top: 4px; }
       .credits .name {
-        font-weight: 600;
+        font-weight: 500;
         margin-bottom: 2px;
       }
       .credits .name a {
@@ -1083,81 +1087,111 @@
       .credits .name a:hover { text-decoration: underline; }
       .credits .meta {
         color: var(--text-secondary);
-        font-size: 10px;
-        line-height: 1.45;
+        font-size: 12px;
+        line-height: 16px;
       }
     </style>
   </head>
 
   <body>
-    <!-- Phosphor-inspired icon sprite. One <use href="#ic-..."> per icon. -->
+    <!-- Phosphor-inspired icon sprite. One <use href="#ic-..."> per icon.
+         24x24 viewBox throughout, stroke-width 2, rounded caps/joins —
+         matches the visual weight of Phosphor "regular" icons at 16px. -->
     <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
          style="position:absolute;width:0;height:0;overflow:hidden;">
       <defs>
-        <symbol id="ic-info" viewBox="0 0 256 256">
-          <circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-width="16"/>
-          <polyline points="120,120 128,120 128,172 136,172" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="126" cy="84" r="10" fill="currentColor"/>
+        <symbol id="ic-info" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <line x1="12" y1="11" x2="12" y2="16.5"/>
+          </g>
+          <circle cx="12" cy="7.5" r="1.1" fill="currentColor"/>
         </symbol>
-        <symbol id="ic-caret-down" viewBox="0 0 256 256">
-          <polyline points="208,96 128,176 48,96" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+        <symbol id="ic-caret-down" viewBox="0 0 24 24">
+          <polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </symbol>
-        <symbol id="ic-magnifying-glass" viewBox="0 0 256 256">
-          <circle cx="112" cy="112" r="80" fill="none" stroke="currentColor" stroke-width="16"/>
-          <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        <symbol id="ic-magnifying-glass" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <line x1="16.2" y1="16.2" x2="21" y2="21"/>
+          </g>
         </symbol>
-        <symbol id="ic-magnifying-glass-plus" viewBox="0 0 256 256">
-          <circle cx="112" cy="112" r="80" fill="none" stroke="currentColor" stroke-width="16"/>
-          <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
-          <line x1="80" y1="112" x2="144" y2="112" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
-          <line x1="112" y1="80" x2="112" y2="144" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        <symbol id="ic-magnifying-glass-plus" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="7"/>
+            <line x1="15.5" y1="15.5" x2="21" y2="21"/>
+            <line x1="7" y1="10.5" x2="14" y2="10.5"/>
+            <line x1="10.5" y1="7" x2="10.5" y2="14"/>
+          </g>
         </symbol>
-        <symbol id="ic-square-half" viewBox="0 0 256 256">
-          <rect x="40" y="40" width="176" height="176" rx="12" fill="none" stroke="currentColor" stroke-width="16"/>
-          <path d="M128 40 L208 40 Q216 40 216 48 L216 208 Q216 216 208 216 L128 216 Z" fill="currentColor"/>
+        <symbol id="ic-square-half" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 3 H 18 a 3 3 0 0 1 3 3 V 18 a 3 3 0 0 1 -3 3 H 12 Z" fill="currentColor"/>
         </symbol>
-        <symbol id="ic-arrow-counter-clockwise" viewBox="0 0 256 256">
-          <polyline points="80,136 80,80 24,80" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M80,80 a 88 88 0 1 1 -16 100" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+        <symbol id="ic-arrow-counter-clockwise" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- L-shaped arrow tail at top-left (matches Phosphor reference). -->
+            <polyline points="7.5 9.3 3 9.3 3 4.8"/>
+            <!-- Roughly 270-degree arc going CCW from bottom-left around to
+                 top, then a short diagonal closing onto the tail. -->
+            <path d="M 6.1 17.8 a 9 9 0 1 0 0 -11.6 L 3 9.3"/>
+          </g>
         </symbol>
-        <symbol id="ic-arrows-clockwise" viewBox="0 0 256 256">
-          <polyline points="176,40 224,40 224,88" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M67.7 89.3a96 96 0 0 1 156.3 -1.3" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="80,216 32,216 32,168" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M188.3 166.7a96 96 0 0 1 -156.3 1.3" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+        <symbol id="ic-arrows-clockwise" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Top-right L-shaped arrow tail (Phosphor reference). -->
+            <polyline points="16.5 9.3 21 9.3 21 4.8"/>
+            <!-- Bottom-left arc curving up and around to the top-right tail. -->
+            <path d="M 6.14 17.3 a 9 9 0 0 0 12.6 0.53 q 0.11 -0.10 0.22 -0.22 l 2.05 -2.03"/>
+            <!-- Bottom-left L-shaped arrow tail. -->
+            <polyline points="7.5 14.7 3 14.7 3 19.2"/>
+            <!-- Top-right arc curving down and around to the bottom-left tail. -->
+            <path d="M 17.86 6.7 a 9 9 0 0 0 -12.6 -0.53 q -0.11 0.10 -0.22 0.22 l -2.05 2.03"/>
+          </g>
         </symbol>
-        <symbol id="ic-cube-focus" viewBox="0 0 256 256">
-          <polyline points="56,40 40,40 40,56" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="216,56 216,40 200,40" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="200,216 216,216 216,200" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="40,200 40,216 56,216" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M128,80L80,108v56l48,28l48-28v-56L128,80Z" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-          <line x1="128" y1="80" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
-          <line x1="80" y1="108" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
-          <line x1="176" y1="108" x2="128" y2="136" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+        <symbol id="ic-cube-focus" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Focus brackets at each corner. -->
+            <polyline points="6 3 3 3 3 6"/>
+            <polyline points="18 3 21 3 21 6"/>
+            <polyline points="3 18 3 21 6 21"/>
+            <polyline points="21 18 21 21 18 21"/>
+            <!-- Small isometric cube in the center (hexagon silhouette + 3
+                 visible internal edges meeting at the centre point). -->
+            <path d="M 12 7.5 L 16.5 10 V 14 L 12 16.5 L 7.5 14 V 10 Z"/>
+            <line x1="12" y1="7.5" x2="12" y2="12"/>
+            <line x1="7.5" y1="10" x2="12" y2="12"/>
+            <line x1="16.5" y1="10" x2="12" y2="12"/>
+          </g>
         </symbol>
-        <symbol id="ic-minus" viewBox="0 0 256 256">
-          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        <symbol id="ic-minus" viewBox="0 0 24 24">
+          <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
         </symbol>
-        <symbol id="ic-plus" viewBox="0 0 256 256">
-          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
-          <line x1="128" y1="40" x2="128" y2="216" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        <symbol id="ic-plus" viewBox="0 0 24 24">
+          <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+          </g>
         </symbol>
-        <symbol id="ic-x" viewBox="0 0 256 256">
-          <line x1="64" y1="64" x2="192" y2="192" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
-          <line x1="192" y1="64" x2="64" y2="192" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
+        <symbol id="ic-x" viewBox="0 0 24 24">
+          <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="18" y1="6" x2="6" y2="18"/>
+          </g>
         </symbol>
-        <symbol id="ic-arrow-right" viewBox="0 0 256 256">
-          <line x1="40" y1="128" x2="216" y2="128" stroke="currentColor" stroke-width="20" stroke-linecap="round"/>
-          <polyline points="144,56 216,128 144,200" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+        <symbol id="ic-arrow-right" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="12" x2="19" y2="12"/>
+            <polyline points="13 6 19 12 13 18"/>
+          </g>
         </symbol>
-        <symbol id="ic-toggle-left" viewBox="0 0 256 256">
-          <rect x="16" y="64" width="224" height="128" rx="64" fill="none" stroke="currentColor" stroke-width="16"/>
-          <circle cx="80" cy="128" r="36" fill="currentColor"/>
+        <symbol id="ic-toggle-left" viewBox="0 0 24 24">
+          <rect x="1.5" y="6" width="21" height="12" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="7.5" cy="12" r="3" fill="currentColor"/>
         </symbol>
-        <symbol id="ic-toggle-right" viewBox="0 0 256 256">
-          <rect x="16" y="64" width="224" height="128" rx="64" fill="currentColor"/>
-          <circle cx="176" cy="128" r="36" fill="#ffffff"/>
+        <symbol id="ic-toggle-right" viewBox="0 0 24 24">
+          <rect x="1.5" y="6" width="21" height="12" rx="6" fill="currentColor"/>
+          <circle cx="16.5" cy="12" r="3" fill="#ffffff"/>
         </symbol>
       </defs>
     </svg>
@@ -1189,7 +1223,7 @@
       <button id="panel-toggle" class="header-icon header-icon-lg" type="button"
               title="Show side panel" aria-label="Toggle side panel"
               aria-expanded="false">
-        <svg class="ic ic-20" aria-hidden="true"><use href="#ic-square-half"/></svg>
+        <svg class="ic ic-24" aria-hidden="true"><use href="#ic-square-half"/></svg>
       </button>
       <div id="recent-pop" class="recent-pop" role="listbox"></div>
 
@@ -1357,11 +1391,11 @@
         <span>Bearing</span>
         <div class="stepper">
           <button class="stepper-btn" type="button" data-target="bearing" data-step="-1" aria-label="Decrease bearing">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-minus"/></svg>
           </button>
           <input id="bearing" type="number" min="-180" max="180" step="1" value="0" />
           <button class="stepper-btn" type="button" data-target="bearing" data-step="1" aria-label="Increase bearing">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-plus"/></svg>
           </button>
         </div>
       </label>
@@ -1371,11 +1405,11 @@
         <span>Pitch</span>
         <div class="stepper">
           <button class="stepper-btn" type="button" data-target="pitch" data-step="-1" aria-label="Decrease pitch">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-minus"/></svg>
           </button>
           <input id="pitch" type="number" min="0" max="60" step="1" value="0" />
           <button class="stepper-btn" type="button" data-target="pitch" data-step="1" aria-label="Increase pitch">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-plus"/></svg>
           </button>
         </div>
       </label>
@@ -1385,11 +1419,11 @@
         <span>Zoom</span>
         <div class="stepper">
           <button class="stepper-btn" type="button" data-target="zoom" data-step="-1" aria-label="Zoom out">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-minus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-minus"/></svg>
           </button>
           <input id="zoom" type="number" min="0" max="22" step="0.1" value="1.4" />
           <button class="stepper-btn" type="button" data-target="zoom" data-step="1" aria-label="Zoom in">
-            <svg class="ic ic-14" aria-hidden="true"><use href="#ic-plus"/></svg>
+            <svg class="ic ic-16" aria-hidden="true"><use href="#ic-plus"/></svg>
           </button>
         </div>
       </label>
@@ -1409,7 +1443,7 @@
       <div class="size-group">
         <select id="size-preset" aria-label="Frame size preset"></select>
         <input id="size-w" type="number" min="64" max="8192" step="1" value="1920" aria-label="Frame width" />
-        <svg class="ic ic-12 size-x" aria-hidden="true"><use href="#ic-x"/></svg>
+        <svg class="ic ic-16 size-x" aria-hidden="true"><use href="#ic-x"/></svg>
         <input id="size-h" type="number" min="64" max="8192" step="1" value="1080" aria-label="Frame height" />
       </div>
       <div class="spacer"></div>
@@ -1447,7 +1481,9 @@
       <div class="modal">
         <header class="modal-header">
           <h2 id="about-title">About &amp; resources</h2>
-          <button id="about-close" class="modal-close" type="button" aria-label="Close">×</button>
+          <button id="about-close" class="modal-close" type="button" aria-label="Close">
+            <svg class="ic ic-24" aria-hidden="true"><use href="#ic-x"/></svg>
+          </button>
         </header>
         <div class="modal-body">
           <p class="lead">

@@ -13,9 +13,13 @@ const EXPORT_AS_LAYERS_KEY = "map-generator:export-as-layers";
 
 // Single fixed window size: the side panel slides over the map (overlay),
 // so we don't need to resize when it opens or closes.
+// Bumped from 760x640 to 840x680 to accommodate the standardised
+// 12px / 16px typography (Inter Regular + Medium). Without the extra
+// 80px of width, the bottom view-row (Bearing, Pitch, Zoom + Grid +
+// Level) was overflowing.
 figma.showUI(__html__, {
-  width: 760,
-  height: 640,
+  width: 840,
+  height: 680,
   themeColors: true,
   title: "Open Source - Map Generator",
 });

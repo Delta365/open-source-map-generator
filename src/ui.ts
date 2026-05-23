@@ -463,7 +463,7 @@ function renderPinChips(): void {
         <span class="name" contenteditable="true" spellcheck="false">${escapeHtml(p.label)}</span>
         <span class="coords">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
       </div>
-      <button class="remove" type="button" aria-label="Remove pin" title="Remove">×</button>
+      <button class="remove" type="button" aria-label="Remove pin" title="Remove"><svg class="ic ic-16" aria-hidden="true"><use href="#ic-x"/></svg></button>
     `;
 
     const nameEl = row.querySelector(".name") as HTMLSpanElement;
@@ -2107,7 +2107,7 @@ function setupRouteSection(opts: RouteSectionOpts): void {
       <div class="waypoint-row-top">
         <label class="route-label">From</label>
         <button type="button" class="remove-waypoint"
-                aria-label="Remove this stop" title="Remove this stop">×</button>
+                aria-label="Remove this stop" title="Remove this stop"><svg class="ic ic-16" aria-hidden="true"><use href="#ic-x"/></svg></button>
       </div>
       <div class="autocomplete-wrap">
         <input class="route-input" type="search"
@@ -2191,7 +2191,7 @@ function setupRouteSection(opts: RouteSectionOpts): void {
           <span class="label">${escapeHtml(routeDisplayName(r))}</span>
           <span class="sub">${modeLabel(r)} · ${formatDistance(r.distanceKm)}</span>
         </div>
-        <button class="remove" type="button" aria-label="Remove" title="Remove">×</button>
+        <button class="remove" type="button" aria-label="Remove" title="Remove"><svg class="ic ic-16" aria-hidden="true"><use href="#ic-x"/></svg></button>
       `;
       row.addEventListener("dblclick", (e) => {
         const t = e.target as HTMLElement;
